@@ -1,3 +1,4 @@
+// Copyright (c) 2016 Volodymyr Syvochka
 #pragma once
 
 #include "Core/Math/MathTypes.h"
@@ -204,3 +205,4 @@ inline Vector3 getVector3(const Vector4& a)
 }
 
 } // namespace Rio
+// Copyright (c) 2016 Volodymyr Syvochka
