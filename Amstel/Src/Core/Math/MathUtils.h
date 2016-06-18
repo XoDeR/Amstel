@@ -1,7 +1,7 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #pragma once
 
-#include <math.h> // acos; sqrtf; sinf; cosf; floorf
+#include <math.h> // acos; sqrtf; sinf; cosf; tanf; floorf
 
 namespace Rio
 {

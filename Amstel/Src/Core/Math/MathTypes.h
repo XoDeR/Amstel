@@ -52,7 +52,7 @@ struct Aabb
 struct Obb
 {
 	// position and orientation of the box
-	Matrix4x4 tm;
+	Matrix4x4 transformMatrix;
 	// size of the box along the axis
 	Vector3 halfExtents;
 };
