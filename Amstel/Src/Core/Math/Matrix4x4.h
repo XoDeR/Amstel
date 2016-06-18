@@ -378,29 +378,29 @@ inline Matrix4x4 getTransposed(Matrix4x4 m)
 // Sets the matrix <m> to look
 inline void setToLook(Matrix4x4& m, const Vector3& pos, const Vector3& target, const Vector3& up)
 {
-	Vector3 zaxis = pos - target;
-	normalize(zaxis);
-	const Vector3 xaxis = cross(up, zaxis);
-	const Vector3 yaxis = cross(zaxis, xaxis);
+	Vector3 axisZ = pos - target;
+	normalize(axisZ);
+	const Vector3 axisX = cross(up, axisZ);
+	const Vector3 axisY = cross(axisZ, axisX);
 
-	m.x.x = xaxis.x;
-	m.x.y = yaxis.x;
-	m.x.z = zaxis.x;
+	m.x.x = axisX.x;
+	m.x.y = axisY.x;
+	m.x.z = axisZ.x;
 	m.x.w = 0.0f;
 
-	m.y.x = xaxis.y;
-	m.y.y = yaxis.y;
-	m.y.z = zaxis.y;
+	m.y.x = axisX.y;
+	m.y.y = axisY.y;
+	m.y.z = axisZ.y;
 	m.y.w = 0.0f;
 
-	m.z.x = xaxis.z;
-	m.z.y = yaxis.z;
-	m.z.z = zaxis.z;
+	m.z.x = axisX.z;
+	m.z.y = axisY.z;
+	m.z.z = axisZ.z;
 	m.z.w = 0.0f;
 
-	m.t.x = -dot(pos, xaxis);
-	m.t.y = -dot(pos, yaxis);
-	m.t.z = -dot(pos, zaxis);
+	m.t.x = -dot(pos, axisX);
+	m.t.y = -dot(pos, axisY);
+	m.t.z = -dot(pos, axisZ);
 	m.t.w = 1.0f;
 }
 
