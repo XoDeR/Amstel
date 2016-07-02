@@ -13,29 +13,22 @@
 #elif RIO_PLATFORM_WINDOWS
 	#include "tchar.h"
 	#include "Device/Windows/Headers_Windows.h"
-#endif
+#endif // RIO_PLATFORM_
 
 namespace Rio
 {
+
 class DiskFile : public File
 {
 #if RIO_PLATFORM_POSIX
-	FILE* _file;
+	FILE* file = nullptr;
 #elif RIO_PLATFORM_WINDOWS
-	HANDLE _file;
-	bool _eof;
-#endif
+	HANDLE file = INVALID_HANDLE_VALUE;
+	bool isEndOfFile = false;
+#endif // RIO_PLATFORM_
 
 public:
-
-	/// Opens the file located at @a path with the given @a mode.
 	DiskFile()
-#if RIO_PLATFORM_POSIX
-		: _file(NULL)
-#elif RIO_PLATFORM_WINDOWS
-		: _file(INVALID_HANDLE_VALUE)
-		, _eof(false)
-#endif
 	{
 	}
 
@@ -44,13 +37,14 @@ public:
 		close();
 	}
 
+	// Opens the file located at <path> with the given <mode>
 	void open(const char* path, FileOpenMode::Enum mode)
 	{
 #if RIO_PLATFORM_POSIX
-		_file = fopen(path, (mode == FileOpenMode::READ) ? "rb" : "wb");
-		RIO_ASSERT(_file != NULL, "fopen: errno = %d, path = '%s'", errno, path);
+		file = fopen(path, (mode == FileOpenMode::READ) ? "rb" : "wb");
+		RIO_ASSERT(file != nullptr, "fopen: errno = %d, path = '%s'", errno, path);
 #elif RIO_PLATFORM_WINDOWS
-		_file = CreateFile(path
+		file = CreateFile(path
 			, (mode == FileOpenMode::READ) ? GENERIC_READ : GENERIC_WRITE
 			, 0
 			, NULL
@@ -58,122 +52,122 @@ public:
 			, FILE_ATTRIBUTE_NORMAL
 			, NULL
 			);
-		RIO_ASSERT(_file != INVALID_HANDLE_VALUE
+		RIO_ASSERT(file != INVALID_HANDLE_VALUE
 			, "CreateFile: GetLastError = %d, path = '%s'"
 			, GetLastError()
 			, path
 			);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	void close()
 	{
-		if (is_open())
+		if (getIsOpen())
 		{
 #if RIO_PLATFORM_POSIX
-			fclose(_file);
-			_file = NULL;
+			fclose(file);
+			file = nullptr;
 #elif RIO_PLATFORM_WINDOWS
-			CloseHandle(_file);
-			_file = INVALID_HANDLE_VALUE;
-#endif
+			CloseHandle(file);
+			file = INVALID_HANDLE_VALUE;
+#endif // RIO_PLATFORM_
 		}
 	}
 
-	bool is_open() const
+	bool getIsOpen() const
 	{
 #if RIO_PLATFORM_POSIX
-		return _file != NULL;
+		return file != NULL;
 #elif RIO_PLATFORM_WINDOWS
-		return _file != INVALID_HANDLE_VALUE;
-#endif
+		return file != INVALID_HANDLE_VALUE;
+#endif // RIO_PLATFORM_
 	}
 
 	uint32_t getSize()
 	{
 #if RIO_PLATFORM_POSIX
-		long pos = ftell(_file);
-		RIO_ASSERT(pos != -1, "ftell: errno = %d", errno);
-		int err = fseek(_file, 0, SEEK_END);
+		long position = ftell(file);
+		RIO_ASSERT(position != -1, "ftell: errno = %d", errno);
+		int err = fseek(file, 0, SEEK_END);
 		RIO_ASSERT(err == 0, "fseek: errno = %d", errno);
-		long size = ftell(_file);
+		long size = ftell(file);
 		RIO_ASSERT(size != -1, "ftell: errno = %d", errno);
-		err = fseek(_file, (long)pos, SEEK_SET);
+		err = fseek(file, (long)position, SEEK_SET);
 		RIO_ASSERT(err == 0, "fseek: errno = %d", errno);
 		RIO_UNUSED(err);
 		return (uint32_t)size;
 #elif RIO_PLATFORM_WINDOWS
-		return GetFileSize(_file, NULL);
-#endif
+		return GetFileSize(file, NULL);
+#endif // RIO_PLATFORM_
 	}
 
 	uint32_t getPosition()
 	{
 #if RIO_PLATFORM_POSIX
-		long pos = ftell(_file);
-		RIO_ASSERT(pos != -1, "ftell: errno = %d", errno);
-		return (uint32_t)pos;
+		long position = ftell(file);
+		RIO_ASSERT(position != -1, "ftell: errno = %d", errno);
+		return (uint32_t)position;
 #elif RIO_PLATFORM_WINDOWS
-		DWORD pos = SetFilePointer(_file, 0, NULL, FILE_CURRENT);
-		RIO_ASSERT(pos != INVALID_SET_FILE_POINTER
+		DWORD position = SetFilePointer(file, 0, NULL, FILE_CURRENT);
+		RIO_ASSERT(position != INVALID_SET_FILE_POINTER
 			, "SetFilePointer: GetLastError = %d"
 			, GetLastError()
 			);
-		return (uint32_t)pos;
-#endif
+		return (uint32_t)position;
+#endif // RIO_PLATFORM_
 	}
 
 	bool getIsEndOfFile()
 	{
 #if RIO_PLATFORM_POSIX
-		return feof(_file) != 0;
+		return feof(file) != 0;
 #elif RIO_PLATFORM_WINDOWS
-		return _eof;
-#endif
+		return isEndOfFile;
+#endif // RIO_PLATFORM_
 	}
 
 	void seek(uint32_t position)
 	{
 #if RIO_PLATFORM_POSIX
-		int err = fseek(_file, (long)position, SEEK_SET);
+		int err = fseek(file, (long)position, SEEK_SET);
 		RIO_ASSERT(err == 0, "fseek: errno = %d", errno);
 #elif RIO_PLATFORM_WINDOWS
-		DWORD err = SetFilePointer(_file, position, NULL, FILE_BEGIN);
+		DWORD err = SetFilePointer(file, position, NULL, FILE_BEGIN);
 		RIO_ASSERT(err != INVALID_SET_FILE_POINTER
 			, "SetFilePointer: GetLastError = %d"
 			, GetLastError()
 			);
-#endif
+#endif // RIO_PLATFORM_
 		RIO_UNUSED(err);
 	}
 
 	void seekToEnd()
 	{
 #if RIO_PLATFORM_POSIX
-		int err = fseek(_file, 0, SEEK_END);
+		int err = fseek(file, 0, SEEK_END);
 		RIO_ASSERT(err == 0, "fseek: errno = %d", errno);
 #elif RIO_PLATFORM_WINDOWS
-		DWORD err = SetFilePointer(_file, 0, NULL, FILE_END);
+		DWORD err = SetFilePointer(file, 0, NULL, FILE_END);
 		RIO_ASSERT(err != INVALID_SET_FILE_POINTER
 			, "SetFilePointer: GetLastError = %d"
 			, GetLastError()
 			);
-#endif
+#endif // RIO_PLATFORM_
 		RIO_UNUSED(err);
 	}
 
 	void skip(uint32_t bytes)
 	{
 #if RIO_PLATFORM_POSIX
-		int err = fseek(_file, bytes, SEEK_CUR);
+		int err = fseek(file, bytes, SEEK_CUR);
 		RIO_ASSERT(err == 0, "fseek: errno = %d", errno);
 #elif RIO_PLATFORM_WINDOWS
-		DWORD err = SetFilePointer(_file, bytes, NULL, FILE_CURRENT);
+		DWORD err = SetFilePointer(file, bytes, NULL, FILE_CURRENT);
 		RIO_ASSERT(err != INVALID_SET_FILE_POINTER
 			, "SetFilePointer: GetLastError = %d"
 			, GetLastError()
 			);
-#endif
+#endif // RIO_PLATFORM_
 		RIO_UNUSED(err);
 	}
 
@@ -181,48 +175,48 @@ public:
 	{
 		RIO_ASSERT(data != NULL, "Data must be != NULL");
 #if RIO_PLATFORM_POSIX
-		size_t bytesRead = fread(data, 1, size, _file);
-		RIO_ASSERT(ferror(_file) == 0, "fread error");
+		size_t bytesRead = fread(data, 1, size, file);
+		RIO_ASSERT(ferror(file) == 0, "fread error");
 		return (uint32_t)bytesRead;
 #elif RIO_PLATFORM_WINDOWS
 		DWORD bytesRead;
-		BOOL err = ReadFile(_file, data, size, &bytesRead, NULL);
+		BOOL err = ReadFile(file, data, size, &bytesRead, NULL);
 		RIO_ASSERT(err == TRUE, "ReadFile: GetLastError = %d", GetLastError());
-		_eof = err && bytesRead == 0;
+		isEndOfFile = err && bytesRead == 0;
 		return bytesRead;
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	uint32_t write(const void* data, uint32_t size)
 	{
 		RIO_ASSERT(data != NULL, "Data must be != NULL");
 #if RIO_PLATFORM_POSIX
-		size_t bytes_written = fwrite(data, 1, size, _file);
-		RIO_ASSERT(ferror(_file) == 0, "fwrite error");
+		size_t bytes_written = fwrite(data, 1, size, file);
+		RIO_ASSERT(ferror(file) == 0, "fwrite error");
 		return (uint32_t)bytes_written;
 #elif RIO_PLATFORM_WINDOWS
 		DWORD bytes_written;
-		WriteFile(_file, data, size, &bytes_written, NULL);
+		WriteFile(file, data, size, &bytes_written, NULL);
 		RIO_ASSERT(size == bytes_written
 			, "WriteFile: GetLastError = %d"
 			, GetLastError()
 			);
 		return bytes_written;
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	void flush()
 	{
 #if RIO_PLATFORM_POSIX
-		int err = fflush(_file);
+		int err = fflush(file);
 		RIO_ASSERT(err == 0, "fflush: errno = %d", errno);
 #elif RIO_PLATFORM_WINDOWS
-		BOOL err = FlushFileBuffers(_file);
+		BOOL err = FlushFileBuffers(file);
 		RIO_ASSERT(err != 0
 			, "FlushFileBuffers: GetLastError = %d"
 			, GetLastError()
 			);
-#endif
+#endif // RIO_PLATFORM_
 		RIO_UNUSED(err);
 	}
 };

@@ -192,8 +192,8 @@ struct TcpSocket
 	{
 		int err = ::accept(socket, NULL, NULL);
 
-		AcceptResult ar;
-		ar.error = AcceptResult::NO_ERROR;
+		AcceptResult acceptResult;
+		acceptResult.error = AcceptResult::NO_ERROR;
 
 #if RIO_PLATFORM_POSIX
 		if (err >= 0)
@@ -202,34 +202,34 @@ struct TcpSocket
 		}
 		else if (err == -1 && errno == EBADF)
 		{
-			ar.error = AcceptResult::BAD_SOCKET;
+			acceptResult.error = AcceptResult::BAD_SOCKET;
 		}
 		else if (err == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
 		{
-			ar.error = AcceptResult::NO_CONNECTION;
+			acceptResult.error = AcceptResult::NO_CONNECTION;
 		}
 		else
 		{
-			ar.error = AcceptResult::UNKNOWN;
+			acceptResult.error = AcceptResult::UNKNOWN;
 		}
 #elif RIO_PLATFORM_WINDOWS
 		if (err != INVALID_SOCKET)
 		{
 			c.socket = err;
-			return ar;
+			return acceptResult;
 		}
 
 		int wsaerr = WSAGetLastError();
 		if (wsaerr == WSAEWOULDBLOCK)
 		{
-			ar.error = AcceptResult::NO_CONNECTION;
+			acceptResult.error = AcceptResult::NO_CONNECTION;
 		}
 		else
 		{
-			ar.error = AcceptResult::UNKNOWN;
+			acceptResult.error = AcceptResult::UNKNOWN;
 		}
 #endif // RIO_PLATFORM_
-		return ar;
+		return acceptResult;
 	}
 
 	AcceptResult acceptNonblock(TcpSocket& c)

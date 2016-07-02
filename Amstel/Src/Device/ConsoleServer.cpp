@@ -23,13 +23,13 @@ void ConsoleServer::listen(uint16_t port, bool wait)
 
 	if (wait)
 	{
-		AcceptResult ar;
+		AcceptResult acceptResult;
 		TcpSocket client;
 		do
 		{
-			ar = server.accept(client);
+			acceptResult = server.accept(client);
 		}
-		while (ar.error != AcceptResult::NO_ERROR);
+		while (acceptResult.error != AcceptResult::NO_ERROR);
 
 		addClient(client);
 	}
@@ -55,17 +55,17 @@ void ConsoleServer::send(TcpSocket client, const char* json)
 void ConsoleServer::error(TcpSocket client, const char* msg)
 {
 	TempAllocator4096 ta;
-	StringStream ss(ta);
-	ss << "{\"type\":\"error\",\"message\":\"" << msg << "\"}";
-	send(client, StringStreamFn::getCStr(ss));
+	StringStream stringStream(ta);
+	stringStream << "{\"type\":\"error\",\"message\":\"" << msg << "\"}";
+	send(client, StringStreamFn::getCStr(stringStream));
 }
 
 void ConsoleServer::success(TcpSocket client, const char* msg)
 {
 	TempAllocator4096 ta;
-	StringStream ss(ta);
-	ss << "{\"type\":\"success\",\"message\":\"" << msg << "\"}";
-	send(client, StringStreamFn::getCStr(ss));
+	StringStream stringStream(ta);
+	stringStream << "{\"type\":\"success\",\"message\":\"" << msg << "\"}";
+	send(client, StringStreamFn::getCStr(stringStream));
 }
 
 void ConsoleServer::send(const char* json)
@@ -158,11 +158,11 @@ ReadResult ConsoleServer::updateClient(TcpSocket client)
 void ConsoleServer::process(TcpSocket client, const char* json)
 {
 	TempAllocator4096 ta;
-	JsonObject obj(ta);
-	JsonRFn::parse(json, obj);
+	JsonObject jsonObject(ta);
+	JsonRFn::parse(json, jsonObject);
 
 	CommandData commandData;
-	commandData = SortMapFn::get(commandDataList, JsonRFn::parseStringId(obj["type"]), commandData);
+	commandData = SortMapFn::get(commandDataList, JsonRFn::parseStringId(jsonObject["type"]), commandData);
 
 	if (commandData.commandFunction != nullptr)
 	{
