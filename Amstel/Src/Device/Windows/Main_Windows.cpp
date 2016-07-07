@@ -176,7 +176,7 @@ struct Joypad
 			XINPUT_GAMEPAD& gamepad = stateList[i].Gamepad;
 
 			const WORD diff = state.Gamepad.wButtons ^ gamepad.wButtons;
-			const WORD curr = state.Gamepad.wButtons;
+			const WORD current = state.Gamepad.wButtons;
 			if (diff != 0)
 			{
 				for (uint8_t bb = 0; bb < RIO_COUNTOF(xInputToJoypadTable); ++bb)
@@ -184,8 +184,8 @@ struct Joypad
 					WORD bit = xInputToJoypadTable[bb].bit;
 					if (bit & diff)
 					{
-						queue.pushJoypadEvent(i, xInputToJoypadTable[bb].button, (curr & bit) != 0);
-						gamepad.wButtons = curr;
+						queue.pushJoypadEvent(i, xInputToJoypadTable[bb].button, (current & bit) != 0);
+						gamepad.wButtons = current;
 					}
 				}
 			}
@@ -573,9 +573,9 @@ namespace WindowFn
 		return RIO_NEW(a, Window_Windows)();
 	}
 
-	void destroy(Allocator& a, Window& w)
+	void destroy(Allocator& a, Window& window)
 	{
-		RIO_DELETE(a, &w);
+		RIO_DELETE(a, &window);
 	}
 } // namespace WindowFn
 
@@ -597,9 +597,9 @@ namespace DisplayFn
 		return RIO_NEW(a, Display_Windows)();
 	}
 
-	void destroy(Allocator& a, Display& d)
+	void destroy(Allocator& a, Display& display)
 	{
-		RIO_DELETE(a, &d);
+		RIO_DELETE(a, &display);
 	}
 } // namespace DisplayFn
 
@@ -623,27 +623,27 @@ struct InitMemoryGlobals
 	}
 };
 
-int main(int argc, char** argv)
+int main(int argumentListCount, char** argumentList)
 {
 	using namespace Rio;
 #if RIO_BUILD_UNIT_TESTS
-	CommandLine commandLine(argc, (const char**)argv);
+	CommandLine commandLine(argumentListCount, (const char**)argumentList);
 	if (commandLine.hasArgument("runUnitTests"))
 	{
 		runUnitTests();
 		return EXIT_SUCCESS;
 	}
 #endif // RIO_BUILD_UNIT_TESTS
-	InitMemoryGlobals m;
-	RIO_UNUSED(m);
+	InitMemoryGlobals initMemoryGlobals;
+	RIO_UNUSED(initMemoryGlobals);
 
-	WSADATA wsdata;
-	int err = WSAStartup(MAKEWORD(2, 2), &wsdata);
+	WSADATA wsaData;
+	int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	RIO_ASSERT(err == 0, "WSAStartup: error = %d", err);
-	RIO_UNUSED(wsdata);
+	RIO_UNUSED(wsaData);
 	RIO_UNUSED(err);
 
-	DeviceOptions deviceOptions(argc, (const char**)argv);
+	DeviceOptions deviceOptions(argumentListCount, (const char**)argumentList);
 	if (deviceOptions.parse() == EXIT_SUCCESS)
 	{
 		return windowsDevice.run(&deviceOptions);
