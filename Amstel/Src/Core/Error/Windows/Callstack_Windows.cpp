@@ -41,15 +41,15 @@ namespace ErrorFn
 		stack.AddrFrame.Mode = AddrModeFlat;
 		stack.AddrStack.Offset = ctx.Rsp;
 		stack.AddrStack.Mode = AddrModeFlat;
-#endif
+#endif // _M_IX86; _M_X64
 
 		DWORD ldsp = 0;
 		IMAGEHLP_LINE64 line;
 		ZeroMemory(&line, sizeof(IMAGEHLP_LINE64));
 		line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
 
-		char buf[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-		PSYMBOL_INFO sym = (PSYMBOL_INFO)buf;
+		char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+		PSYMBOL_INFO sym = (PSYMBOL_INFO)buffer;
 		sym->SizeOfStruct = sizeof(SYMBOL_INFO);
 		sym->MaxNameLen = MAX_SYM_NAME;
 
@@ -72,14 +72,14 @@ namespace ErrorFn
 
 			++num;
 
-			BOOL res = SymGetLineFromAddr64(GetCurrentProcess()
+			BOOL result = SymGetLineFromAddr64(GetCurrentProcess()
 						, stack.AddrPC.Offset
 						, &ldsp
 						, &line
 						);
-			res = res && SymFromAddr(GetCurrentProcess(), stack.AddrPC.Offset, 0, sym);
+			result = result && SymFromAddr(GetCurrentProcess(), stack.AddrPC.Offset, 0, sym);
 
-			if (res == TRUE)
+			if (result == TRUE)
 			{
 				RIO_LOGE("\t[%2i] %s in %s:%d", num, sym->Name, line.FileName, line.LineNumber);
 			}

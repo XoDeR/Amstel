@@ -3,9 +3,9 @@
 
 #if RIO_PLATFORM_LINUX && RIO_COMPILER_GCC
 
-#include "Device/Log.h"
 #include "Core/Base/Macros.h"
 #include "Core/Strings/StringUtils.h"
+#include "Device/Log.h"
 
 #include <cxxabi.h>
 #include <execinfo.h>
@@ -20,14 +20,14 @@ namespace ErrorFn
 {
 	static const char* addr2line(const char* addr, char* line, int length)
 	{
-		char buf[256];
-		snPrintF(buf, sizeof(buf), "addr2line -e /proc/%u/exe %s", getpid(), addr);
-		FILE* f = popen(buf, "r");
-		if (f)
+		char buffer[256];
+		snPrintF(buffer, sizeof(buffer), "addr2line -e /proc/%u/exe %s", getpid(), addr);
+		FILE* file = popen(buffer, "r");
+		if (file != nullptr)
 		{
-			fgets(line, length, f);
+			fgets(line, length, file);
 			line[getStringLength32(line) - 1] = '\0';
-			pclose(f);
+			pclose(file);
 			return line;
 		}
 		return "<addr2line missing>";
