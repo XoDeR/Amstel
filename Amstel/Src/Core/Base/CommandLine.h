@@ -8,23 +8,23 @@ namespace Rio
 
 struct CommandLine
 {
-	CommandLine(int argc, const char** argv)
-		: argc(argc)
-		, argv(argv)
+	CommandLine(int argumentListCount, const char** argumentList)
+		: argumentListCount(argumentListCount)
+		, argumentList(argumentList)
 	{
 	}
 
 	int findArgument(const char* longOpt, char shortOpt)
 	{
-		for (int i = 0; i < this->argc; ++i)
+		for (int i = 0; i < this->argumentListCount; ++i)
 		{
-			if (getIsLongOpt(this->argv[i], longOpt) || getIsShortOpt(this->argv[i], shortOpt))
+			if (getIsLongOpt(this->argumentList[i], longOpt) || getIsShortOpt(this->argumentList[i], shortOpt))
 			{
 				return i;
 			}
 		}
 
-		return this->argc;
+		return this->argumentListCount;
 	}
 
 	bool getIsShortOpt(const char* arg, char shortOpt)
@@ -48,17 +48,17 @@ struct CommandLine
 
 	const char* getParameter(const char* longOpt, char shortOpt = '\0')
 	{
-		int argc = findArgument(longOpt, shortOpt);
-		return argc < this->argc ? this->argv[argc + 1] : nullptr;
+		int argumentListCount = findArgument(longOpt, shortOpt);
+		return argumentListCount < this->argumentListCount ? this->argumentList[argumentListCount + 1] : nullptr;
 	}
 
 	bool hasArgument(const char* longOpt, char shortOpt = '\0')
 	{
-		return findArgument(longOpt, shortOpt) < this->argc;
+		return findArgument(longOpt, shortOpt) < this->argumentListCount;
 	}
 
-	int argc;
-	const char** argv;
+	int argumentListCount;
+	const char** argumentList;
 };
 
 } // namespace Rio

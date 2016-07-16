@@ -21,7 +21,10 @@ struct Vector3
 
 struct Vector4
 {
-	float x, y, z, w;
+	float x;
+	float y;
+	float z;
+	float w;
 };
 
 // RGBA color
@@ -29,17 +32,25 @@ typedef Vector4 Color4;
 
 struct Quaternion
 {
-	float x, y, z, w;
+	float x;
+	float y;
+	float z;
+	float w;
 };
 
 struct Matrix3x3
 {
-	Vector3 x, y, z;
+	Vector3 x;
+	Vector3 y;
+	Vector3 z;
 };
 
 struct Matrix4x4
 {
-	Vector4 x, y, z, t;
+	Vector4 x;
+	Vector4 y;
+	Vector4 z;
+	Vector4 t;
 };
 
 struct Aabb
@@ -82,35 +93,35 @@ struct Sphere
 	float r;
 };
 
-const Vector2 VECTOR2_ZERO  = { 0.0f, 0.0f };
-const Vector2 VECTOR2_ONE   = { 1.0f, 1.0f };
+const Vector2 VECTOR2_ZERO = { 0.0f, 0.0f };
+const Vector2 VECTOR2_ONE = { 1.0f, 1.0f };
 const Vector2 VECTOR2_XAXIS = { 1.0f, 0.0f };
 const Vector2 VECTOR2_YAXIS = { 0.0f, 1.0f };
 
-const Vector3 VECTOR3_ZERO     = {  0.0f,  0.0f,  0.0f };
-const Vector3 VECTOR3_ONE      = {  1.0f,  1.0f,  1.0f };
-const Vector3 VECTOR3_XAXIS    = {  1.0f,  0.0f,  0.0f };
-const Vector3 VECTOR3_YAXIS    = {  0.0f,  1.0f,  0.0f };
-const Vector3 VECTOR3_ZAXIS    = {  0.0f,  0.0f,  1.0f };
-const Vector3 VECTOR3_RIGHT    = {  1.0f,  0.0f,  0.0f };
-const Vector3 VECTOR3_LEFT     = { -1.0f,  0.0f,  0.0f };
-const Vector3 VECTOR3_UP       = {  0.0f,  1.0f,  0.0f };
-const Vector3 VECTOR3_DOWN     = {  0.0f, -1.0f,  0.0f };
-const Vector3 VECTOR3_FORWARD  = {  0.0f,  0.0f,  1.0f };
+const Vector3 VECTOR3_ZERO = {  0.0f,  0.0f,  0.0f };
+const Vector3 VECTOR3_ONE = {  1.0f,  1.0f,  1.0f };
+const Vector3 VECTOR3_XAXIS = {  1.0f,  0.0f,  0.0f };
+const Vector3 VECTOR3_YAXIS = {  0.0f,  1.0f,  0.0f };
+const Vector3 VECTOR3_ZAXIS = {  0.0f,  0.0f,  1.0f };
+const Vector3 VECTOR3_RIGHT = {  1.0f,  0.0f,  0.0f };
+const Vector3 VECTOR3_LEFT = { -1.0f,  0.0f,  0.0f };
+const Vector3 VECTOR3_UP = {  0.0f,  1.0f,  0.0f };
+const Vector3 VECTOR3_DOWN = {  0.0f, -1.0f,  0.0f };
+const Vector3 VECTOR3_FORWARD = {  0.0f,  0.0f,  1.0f };
 const Vector3 VECTOR3_BACKWARD = {  0.0f,  0.0f, -1.0f };
 
-const Vector4 VECTOR4_ZERO  = { 0.0f, 0.0f, 0.0f, 0.0f };
-const Vector4 VECTOR4_ONE   = { 1.0f, 1.0f, 1.0f, 1.0f };
+const Vector4 VECTOR4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
+const Vector4 VECTOR4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
 const Vector4 VECTOR4_XAXIS = { 1.0f, 0.0f, 0.0f, 0.0f };
 const Vector4 VECTOR4_YAXIS = { 0.0f, 1.0f, 0.0f, 0.0f };
 const Vector4 VECTOR4_ZAXIS = { 0.0f, 0.0f, 1.0f, 0.0f };
 const Vector4 VECTOR4_WAXIS = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-const Color4 COLOR4_BLACK  = { 0.0f, 0.0f, 0.0f, 1.0f };
-const Color4 COLOR4_WHITE  = { 1.0f, 1.0f, 1.0f, 1.0f };
-const Color4 COLOR4_RED    = { 1.0f, 0.0f, 0.0f, 1.0f };
-const Color4 COLOR4_GREEN  = { 0.0f, 1.0f, 0.0f, 1.0f };
-const Color4 COLOR4_BLUE   = { 0.0f, 0.0f, 1.0f, 1.0f };
+const Color4 COLOR4_BLACK = { 0.0f, 0.0f, 0.0f, 1.0f };
+const Color4 COLOR4_WHITE = { 1.0f, 1.0f, 1.0f, 1.0f };
+const Color4 COLOR4_RED = { 1.0f, 0.0f, 0.0f, 1.0f };
+const Color4 COLOR4_GREEN = { 0.0f, 1.0f, 0.0f, 1.0f };
+const Color4 COLOR4_BLUE = { 0.0f, 0.0f, 1.0f, 1.0f };
 const Color4 COLOR4_YELLOW = { 1.0f, 1.0f, 0.0f, 1.0f };
 const Color4 COLOR4_ORANGE = { 1.0f, 0.5f, 0.0f, 1.0f };
 
@@ -120,7 +131,7 @@ const Matrix3x3 MATRIX3X3_IDENTITY = { VECTOR3_XAXIS, VECTOR3_YAXIS, VECTOR3_ZAX
 
 const Matrix4x4 MATRIX4X4_IDENTITY = { VECTOR4_XAXIS, VECTOR4_YAXIS, VECTOR4_ZAXIS, VECTOR4_WAXIS };
 
-const Plane PLANE_ZERO  = { VECTOR3_ZERO,  0.0f };
+const Plane PLANE_ZERO = { VECTOR3_ZERO,  0.0f };
 const Plane PLANE_XAXIS = { VECTOR3_XAXIS, 0.0f };
 const Plane PLANE_YAXIS = { VECTOR3_YAXIS, 0.0f };
 const Plane PLANE_ZAXIS = { VECTOR3_ZAXIS, 0.0f };

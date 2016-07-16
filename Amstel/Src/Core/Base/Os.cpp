@@ -19,15 +19,15 @@ namespace OsFn
 	void getFileList(const char* path, Vector<DynamicString>& files)
 	{
 #if RIO_PLATFORM_POSIX
-		DIR *dir;
+		DIR* directory;
 		struct dirent *entry;
 
-		if (!(dir = opendir(path)))
+		if (!(directory = opendir(path)))
 		{
 			return;
 		}
 
-		while ((entry = readdir(dir)))
+		while ((entry = readdir(directory)))
 		{
 			const char* dname = entry->d_name;
 
@@ -41,7 +41,7 @@ namespace OsFn
 			VectorFn::pushBack(files, fileName);
 		}
 
-		closedir(dir);
+		closedir(directory);
 #elif RIO_PLATFORM_WINDOWS
 		TempAllocator1024 ta;
 		DynamicString currentPath(path, ta);
@@ -82,10 +82,10 @@ namespace OsFn
 		cmd += args;
 		FILE* file = popen(cmd.getCStr(), "r");
 
-		char buf[1024];
-		while (fgets(buf, sizeof(buf), file) != NULL)
+		char buffer[1024];
+		while (fgets(buffer, sizeof(buffer), file) != NULL)
 		{
-			output << buf;
+			output << buffer;
 		}
 
 		return pclose(file);

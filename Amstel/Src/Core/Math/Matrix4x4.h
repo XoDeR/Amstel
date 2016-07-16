@@ -376,9 +376,9 @@ inline Matrix4x4 getTransposed(Matrix4x4 m)
 }
 
 // Sets the matrix <m> to look
-inline void setToLook(Matrix4x4& m, const Vector3& pos, const Vector3& target, const Vector3& up)
+inline void setToLook(Matrix4x4& m, const Vector3& position, const Vector3& target, const Vector3& up)
 {
-	Vector3 axisZ = pos - target;
+	Vector3 axisZ = position - target;
 	normalize(axisZ);
 	const Vector3 axisX = cross(up, axisZ);
 	const Vector3 axisY = cross(axisZ, axisX);
@@ -398,9 +398,9 @@ inline void setToLook(Matrix4x4& m, const Vector3& pos, const Vector3& target, c
 	m.z.z = axisZ.z;
 	m.z.w = 0.0f;
 
-	m.t.x = -dot(pos, axisX);
-	m.t.y = -dot(pos, axisY);
-	m.t.z = -dot(pos, axisZ);
+	m.t.x = -dot(position, axisX);
+	m.t.y = -dot(position, axisY);
+	m.t.z = -dot(position, axisZ);
 	m.t.w = 1.0f;
 }
 
@@ -582,49 +582,49 @@ inline void setTranslation(Matrix4x4& m, const Vector3& trans)
 }
 
 // Returns the rotation portion of the matrix <m> as a Matrix3x3
-inline Matrix3x3 to_matrix3x3(const Matrix4x4& m)
+inline Matrix3x3 getMatrix3x3(const Matrix4x4& m)
 {
-	Matrix3x3 res;
-	res.x.x = m.x.x;
-	res.x.y = m.x.y;
-	res.x.z = m.x.z;
+	Matrix3x3 result;
+	result.x.x = m.x.x;
+	result.x.y = m.x.y;
+	result.x.z = m.x.z;
 
-	res.y.x = m.y.x;
-	res.y.y = m.y.y;
-	res.y.z = m.y.z;
+	result.y.x = m.y.x;
+	result.y.y = m.y.y;
+	result.y.z = m.y.z;
 
-	res.z.x = m.z.x;
-	res.z.y = m.z.y;
-	res.z.z = m.z.z;
-	return res;
+	result.z.x = m.z.x;
+	result.z.y = m.z.y;
+	result.z.z = m.z.z;
+	return result;
 }
 
 // Returns the rotation portion of the matrix <m> as a Quaternion
 inline Quaternion getRotationAsQuaternion(const Matrix4x4& m)
 {
-	return createQuaternion(to_matrix3x3(m));
+	return createQuaternion(getMatrix3x3(m));
 }
 
 // Sets the rotation portion of the matrix <m>
-inline void setRotation(Matrix4x4& m, const Matrix3x3& rot)
+inline void setRotation(Matrix4x4& m, const Matrix3x3& rotation)
 {
-	m.x.x = rot.x.x;
-	m.x.y = rot.x.y;
-	m.x.z = rot.x.z;
+	m.x.x = rotation.x.x;
+	m.x.y = rotation.x.y;
+	m.x.z = rotation.x.z;
 
-	m.y.x = rot.y.x;
-	m.y.y = rot.y.y;
-	m.y.z = rot.y.z;
+	m.y.x = rotation.y.x;
+	m.y.y = rotation.y.y;
+	m.y.z = rotation.y.z;
 
-	m.z.x = rot.z.x;
-	m.z.y = rot.z.y;
-	m.z.z = rot.z.z;
+	m.z.x = rotation.z.x;
+	m.z.y = rotation.z.y;
+	m.z.z = rotation.z.z;
 }
 
 // Sets the rotation portion of the matrix <m>
-inline void setRotation(Matrix4x4& m, const Quaternion& rot)
+inline void setRotation(Matrix4x4& m, const Quaternion& rotation)
 {
-	setRotation(m, createMatrix3x3(rot));
+	setRotation(m, createMatrix3x3(rotation));
 }
 
 // Returns the scale of the matrix <m>
@@ -643,9 +643,9 @@ inline Vector3 getScale(const Matrix4x4& m)
 // Sets the scale of the matrix <m>
 inline void setScale(Matrix4x4& m, const Vector3& s)
 {
-	Matrix3x3 rot = to_matrix3x3(m);
-	setScale(rot, s);
-	setRotation(m, rot);
+	Matrix3x3 rotation = getMatrix3x3(m);
+	setScale(rotation, s);
+	setRotation(m, rotation);
 }
 
 // Returns the pointer to the matrix's data

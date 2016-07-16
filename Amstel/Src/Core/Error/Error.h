@@ -22,7 +22,7 @@ namespace ErrorFn
 	#define RIO_ASSERT(...) ((void)0)
 #endif // RIO_DEBUG
 
-#define RIO_ASSERT_NOT_NULL(pointer) RIO_ASSERT(pointer != NULL, #pointer " must be not null")
+#define RIO_ASSERT_NOT_NULL(pointer) RIO_ASSERT(pointer != nullptr, #pointer " must be not null")
 #define RIO_FATAL(message) RIO_ASSERT(false, message)
 #define RIO_ENSURE(condition) RIO_ASSERT(condition, "")
 // Copyright (c) 2016 Volodymyr Syvochka

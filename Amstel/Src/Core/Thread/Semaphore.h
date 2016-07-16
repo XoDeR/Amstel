@@ -46,7 +46,7 @@ struct Semaphore
 	void post(uint32_t count = 1)
 	{
 #if RIO_PLATFORM_POSIX
-		ScopedMutex sm(mutex);
+		ScopedMutex scopedMutex(mutex);
 
 		for (uint32_t i = 0; i < count; ++i)
 		{
@@ -66,7 +66,7 @@ struct Semaphore
 	void wait()
 	{
 #if RIO_PLATFORM_POSIX
-		ScopedMutex sm(mutex);
+		ScopedMutex scopedMutex(mutex);
 
 		while (this->count <= 0)
 		{

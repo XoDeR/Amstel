@@ -27,9 +27,9 @@ void StringId32::hash(const char* str, uint32_t length)
 
 void StringId32::toString(DynamicString& s)
 {
-	char buf[8+1];
-	snPrintF(buf, sizeof(buf), "%.8x", id);
-	s.set(buf, sizeof(buf)-1);
+	char buffer[8+1];
+	snPrintF(buffer, sizeof(buffer), "%.8x", id);
+	s.set(buffer, sizeof(buffer)-1);
 }
 
 StringId64::StringId64(const char* str)
@@ -50,9 +50,9 @@ void StringId64::hash(const char* str, uint32_t length)
 
 void StringId64::toString(DynamicString& s)
 {
-	char buf[16+1];
-	snPrintF(buf, sizeof(buf), "%.16" PRIx64, id);
-	s.set(buf, sizeof(buf) - 1);
+	char buffer[16+1];
+	snPrintF(buffer, sizeof(buffer), "%.16" PRIx64, id);
+	s.set(buffer, sizeof(buffer) - 1);
 }
 
 } // namespace Rio

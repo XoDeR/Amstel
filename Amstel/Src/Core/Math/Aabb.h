@@ -15,12 +15,12 @@ namespace AabbFn
 	Vector3 getCenter(const Aabb& b);
 	float getRadius(const Aabb& b);
 	float getVolume(const Aabb& b);
-	// Adds <num> <points> to the box <b>, expanding its bounds if necessary
-	void addPoints(Aabb& a, uint32_t num, uint32_t stride, const void* points);
-	// Adds <num> <points> to the box <b>, expanding its bounds if necessary
-	void addPoints(Aabb& b, uint32_t num, const Vector3* points);
-	// Adds <num> <boxes> to the box <b>, expanding its bounds if necessary
-	void addBoxes(Aabb& b, uint32_t num, const Aabb* boxes);
+	// Adds <pointsCount> <points> to the box <b>, expanding its bounds if necessary
+	void addPoints(Aabb& a, uint32_t pointsCount, uint32_t stride, const void* points);
+	// Adds <pointsCount> <points> to the box <b>, expanding its bounds if necessary
+	void addPoints(Aabb& b, uint32_t pointsCount, const Vector3* points);
+	// Adds <boxesCount> <boxes> to the box <b>, expanding its bounds if necessary
+	void addBoxes(Aabb& b, uint32_t boxesCount, const Aabb* boxes);
 	// Returns whether point <p> is contained in the box <b>
 	bool containsPoint(const Aabb& b, const Vector3& p);
 	// Returns the <index> -th vertex of the box
@@ -56,9 +56,9 @@ namespace AabbFn
 		return (b.max.x - b.min.x) * (b.max.y - b.min.y) * (b.max.z - b.min.z);
 	}
 
-	inline void addPoints(Aabb& b, uint32_t num, const Vector3* points)
+	inline void addPoints(Aabb& b, uint32_t pointsCount, const Vector3* points)
 	{
-		AabbFn::addPoints(b, num, sizeof(Vector3), points);
+		AabbFn::addPoints(b, pointsCount, sizeof(Vector3), points);
 	}
 
 	inline bool containsPoint(const Aabb& b, const Vector3& p)

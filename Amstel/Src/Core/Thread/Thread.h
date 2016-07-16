@@ -32,11 +32,11 @@ struct Thread
 		}
 	}
 
-	void start(ThreadFunction func, void* userData = NULL, uint32_t stackSize = 0)
+	void start(ThreadFunction threadFunction, void* userData = NULL, uint32_t stackSize = 0)
 	{
 		RIO_ASSERT(isRunning == false, "Thread is already running");
-		RIO_ASSERT(func != NULL, "Function must be != NULL");
-		threadFunction = func;
+		RIO_ASSERT(threadFunction != nullptr, "Function must be != nullptr");
+		this->threadFunction = threadFunction;
 		this->userData = userData;
 
 #if RIO_PLATFORM_POSIX
@@ -76,7 +76,8 @@ struct Thread
 		threadHandle = 0;
 #elif RIO_PLATFORM_WINDOWS
 		WaitForSingleObject(threadHandle, INFINITE);
-		// GetExitCodeThread(threadHandle, &m_exit_code);
+		// TODO
+		// GetExitCodeThread(threadHandle, &exitCode);
 		CloseHandle(threadHandle);
 		threadHandle = INVALID_HANDLE_VALUE;
 #endif // RIO_PLATFORM_

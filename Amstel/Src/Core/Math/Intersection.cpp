@@ -8,10 +8,10 @@
 namespace Rio
 {
 
-float getRayPlaneIntersection(const Vector3& from, const Vector3& dir, const Plane& p)
+float getRayPlaneIntersection(const Vector3& from, const Vector3& direction, const Plane& p)
 {
 	const float num = dot(from, p.n);
-	const float den = dot(dir, p.n);
+	const float den = dot(direction, p.n);
 
 	if (getAreFloatsEqual(den, 0.0f))
 	{
@@ -21,17 +21,17 @@ float getRayPlaneIntersection(const Vector3& from, const Vector3& dir, const Pla
 	return (-p.d - num) / den;
 }
 
-float getRayDiscIntersection(const Vector3& from, const Vector3& dir, const Vector3& center, float radius, const Vector3& normal)
+float getRayDiscIntersection(const Vector3& from, const Vector3& direction, const Vector3& center, float radius, const Vector3& normal)
 {
 	const Plane p = PlaneFn::createPlaneFromPointAndNormal(center, normal);
-	const float t = getRayPlaneIntersection(from, dir, p);
+	const float t = getRayPlaneIntersection(from, direction, p);
 
 	if (t == -1.0f)
 	{
 		return -1.0f;
 	}
 
-	const Vector3 intersectionPoint = from + dir * t;
+	const Vector3 intersectionPoint = from + direction * t;
 	if (getDistanceSquared(intersectionPoint, center) < radius*radius)
 	{
 		return t;
@@ -40,10 +40,10 @@ float getRayDiscIntersection(const Vector3& from, const Vector3& dir, const Vect
 	return -1.0f;
 }
 
-float getRaySphereIntersection(const Vector3& from, const Vector3& dir, const Sphere& s)
+float getRaySphereIntersection(const Vector3& from, const Vector3& direction, const Sphere& s)
 {
 	const Vector3 v = s.c - from;
-	const float b   = dot(v, dir);
+	const float b   = dot(v, direction);
 	const float rr  = s.r * s.r;
 	const float bb  = b * b;
 	const float det = rr - dot(v, v) + bb;
@@ -56,7 +56,7 @@ float getRaySphereIntersection(const Vector3& from, const Vector3& dir, const Sp
 	return b - sqrtf(det);
 }
 
-float getRayObbIntersection(const Vector3& from, const Vector3& dir, const Matrix4x4& transformMatrix, const Vector3& halfExtents)
+float getRayObbIntersection(const Vector3& from, const Vector3& direction, const Matrix4x4& transformMatrix, const Vector3& halfExtents)
 {
 	float tMin = 0.0f;
 	float tMax = 999999999.9f;
@@ -67,7 +67,7 @@ float getRayObbIntersection(const Vector3& from, const Vector3& dir, const Matri
 	{
 		const Vector3 axisX = createVector3(transformMatrix.x.x, transformMatrix.x.y, transformMatrix.x.z);
 		const float e = dot(axisX, delta);
-		const float f = dot(dir, axisX);
+		const float f = dot(direction, axisX);
 
 		if (fabs(f) > 0.001f)
 		{
@@ -107,7 +107,7 @@ float getRayObbIntersection(const Vector3& from, const Vector3& dir, const Matri
 	{
 		const Vector3 axisY = createVector3(transformMatrix.y.x, transformMatrix.y.y, transformMatrix.y.z);
 		const float e = dot(axisY, delta);
-		const float f = dot(dir, axisY);
+		const float f = dot(direction, axisY);
 
 		if (fabs(f) > 0.001f)
 		{
@@ -146,12 +146,12 @@ float getRayObbIntersection(const Vector3& from, const Vector3& dir, const Matri
 	{
 		const Vector3 axisZ = createVector3(transformMatrix.z.x, transformMatrix.z.y, transformMatrix.z.z);
 		const float e = dot(axisZ, delta);
-		const float f = dot(dir, axisZ);
+		const float f = dot(direction, axisZ);
 
 		if (fabs(f) > 0.001f)
 		{
-			float t1 = ( e- halfExtents.z)/f;
-			float t2 = ( e+ halfExtents.z)/f;
+			float t1 = (e- halfExtents.z)/f;
+			float t2 = (e+ halfExtents.z)/f;
 
 			if (t1 > t2) 
 			{ 
@@ -185,14 +185,14 @@ float getRayObbIntersection(const Vector3& from, const Vector3& dir, const Matri
 	return tMin;
 }
 
-float getRayTriangleIntersection(const Vector3& from, const Vector3& dir, const Vector3& v0, const Vector3& v1, const Vector3& v2)
+float getRayTriangleIntersection(const Vector3& from, const Vector3& direction, const Vector3& v0, const Vector3& v1, const Vector3& v2)
 {
-	const Vector3 verts[] = { v0, v1, v2 };
-	const uint16_t inds[] = { 0, 1, 2 };
-	return getRayMeshIntersection(from, dir, MATRIX4X4_IDENTITY, verts, sizeof(Vector3), inds, 3);
+	const Vector3 vertices[] = { v0, v1, v2 };
+	const uint16_t indices[] = { 0, 1, 2 };
+	return getRayMeshIntersection(from, direction, MATRIX4X4_IDENTITY, vertices, sizeof(Vector3), indices, 3);
 }
 
-float getRayMeshIntersection(const Vector3& from, const Vector3& dir, const Matrix4x4& transformMatrix, const void* vertices, uint32_t stride, const uint16_t* indices, uint32_t num)
+float getRayMeshIntersection(const Vector3& from, const Vector3& direction, const Matrix4x4& transformMatrix, const void* vertices, uint32_t stride, const uint16_t* indices, uint32_t num)
 {
 	bool hit = false;
 	float tMin = 999999999.9f;
@@ -212,7 +212,7 @@ float getRayMeshIntersection(const Vector3& from, const Vector3& dir, const Matr
 		const Vector3 e2 = v2 - v0;
 
 		// Begin calculating determinant - also used to calculate u parameter
-		const Vector3 P = cross(dir, e2);
+		const Vector3 P = cross(direction, e2);
 
 		// If determinant is near zero, ray lies in plane of triangle
 		const float det = dot(e1, P);
@@ -239,7 +239,7 @@ float getRayMeshIntersection(const Vector3& from, const Vector3& dir, const Matr
 		const Vector3 Q = cross(T, e1);
 
 		// v parameter and test bound
-		const float v = dot(dir, Q) * inv_det;
+		const float v = dot(direction, Q) * inv_det;
 
 		// The intersection lies outside of the triangle
 		if (v < 0.0f || u + v  > 1.0f)

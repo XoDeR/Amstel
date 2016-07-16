@@ -51,12 +51,12 @@ namespace GuidFn
 		uint32_t d;
 		uint32_t e;
 		uint32_t f;
-		int num = sscanf(str, "%8x-%4x-%4x-%4x-%4x%8x", &a, &b, &c, &d, &e, &f);
+		int tokenCount = sscanf(str, "%8x-%4x-%4x-%4x-%4x%8x", &a, &b, &c, &d, &e, &f);
 		guid.data1 = a;
 		guid.data2 = (uint16_t)(b & 0x0000ffffu);
 		guid.data3 = (uint16_t)(c & 0x0000ffffu);
 		guid.data4 = (uint64_t)(d & 0x0000ffffu) << 48 | (uint64_t)(e & 0x0000ffffu) << 32 | (uint64_t)f;
-		return num == 6;
+		return tokenCount == 6;
 	}
 
 	void toString(const Guid& guid, DynamicString& s)

@@ -6,10 +6,10 @@ namespace Rio
 
 namespace AabbFn
 {
-	void addPoints(Aabb& b, uint32_t num, uint32_t stride, const void* points)
+	void addPoints(Aabb& b, uint32_t pointsCount, uint32_t stride, const void* points)
 	{
 		const char* pts = (const char*)points;
-		for (uint32_t i = 0; i < num; ++i, pts += stride)
+		for (uint32_t i = 0; i < pointsCount; ++i, pts += stride)
 		{
 			const Vector3& pi = *(const Vector3*)pts;
 
@@ -22,9 +22,9 @@ namespace AabbFn
 		}
 	}
 
-	void addBoxes(Aabb& b, uint32_t num, const Aabb* boxes)
+	void addBoxes(Aabb& b, uint32_t boxesCount, const Aabb* boxes)
 	{
-		for (uint32_t i = 0; i < num; ++i)
+		for (uint32_t i = 0; i < boxesCount; ++i)
 		{
 			const Aabb& bi = boxes[i];
 

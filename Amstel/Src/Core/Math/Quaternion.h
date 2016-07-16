@@ -136,16 +136,16 @@ inline Quaternion getPower(const Quaternion& q, float exp)
 	return q;
 }
 
-// Returns the quaternion describing the rotation needed to face towards <dir>
-inline Quaternion getLook(const Vector3& dir, const Vector3& up = VECTOR3_YAXIS)
+// Returns the quaternion describing the rotation needed to face towards <direction>
+inline Quaternion getLook(const Vector3& direction, const Vector3& up = VECTOR3_YAXIS)
 {
-	const Vector3 right = cross(dir, up);
-	const Vector3 nup = cross(right, dir);
+	const Vector3 right = cross(direction, up);
+	const Vector3 nup = cross(right, direction);
 
 	Matrix3x3 m;
 	m.x = -right;
 	m.y = nup;
-	m.z = dir;
+	m.z = direction;
 	return createQuaternion(m);
 }
 

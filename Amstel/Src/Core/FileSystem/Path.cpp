@@ -46,9 +46,9 @@ namespace PathFn
 	{
 		RIO_ASSERT_NOT_NULL(pathA);
 		RIO_ASSERT_NOT_NULL(pathB);
-		const uint32_t la = getStringLength32(pathA);
-		const uint32_t lb = getStringLength32(pathB);
-		path.reserve(la + lb + 1);
+		const uint32_t lengthA = getStringLength32(pathA);
+		const uint32_t lengthB = getStringLength32(pathB);
+		path.reserve(lengthA + lengthB + 1);
 		path += pathA;
 		path += PATH_SEPARATOR;
 		path += pathB;
@@ -57,15 +57,15 @@ namespace PathFn
 	const char* getBasename(const char* path)
 	{
 		RIO_ASSERT_NOT_NULL(path);
-		const char* ls = strrchr(path, '/');
-		return ls == NULL ? path : ls + 1;
+		const char* shift = strrchr(path, '/');
+		return shift == nullptr ? path : shift + 1;
 	}
 
 	const char* getExtension(const char* path)
 	{
 		RIO_ASSERT_NOT_NULL(path);
-		const char* ld = strrchr(path, '.');
-		return ld == NULL ? NULL : ld + 1;
+		const char* dot = strrchr(path, '.');
+		return dot == nullptr ? nullptr : dot + 1;
 	}
 } // namespace PathFn
 

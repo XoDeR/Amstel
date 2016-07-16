@@ -229,6 +229,8 @@ DiskFileSystem::DiskFileSystem(Allocator& a)
 
 void DiskFileSystem::setPrefix(const char* prefix)
 {
+	RIO_ASSERT_NOT_NULL(prefix);
+
 	this->prefix.set(prefix, getStringLength32(prefix));
 }
 

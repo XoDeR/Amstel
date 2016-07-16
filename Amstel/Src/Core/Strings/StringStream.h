@@ -90,9 +90,9 @@ namespace StringStreamFn
 	template <typename T>
 	inline StringStream& streamPrintF(StringStream& s, const char* format, T& val)
 	{
-		char buf[32];
-		snPrintF(buf, sizeof(buf), format, val);
-		return s << buf;
+		char buffer[32];
+		snPrintF(buffer, sizeof(buffer), format, val);
+		return s << buffer;
 	}
 } // namespace StringStreamFn
 

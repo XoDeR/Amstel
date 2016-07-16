@@ -45,7 +45,7 @@ namespace OsFn
 		LARGE_INTEGER ttime;
 		QueryPerformanceCounter(&ttime);
 		return (int64_t)ttime.QuadPart;
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	inline int64_t getClockFrequency()
@@ -58,16 +58,16 @@ namespace OsFn
 		LARGE_INTEGER frequency;
 		QueryPerformanceFrequency(&frequency);
 		return (int64_t)frequency.QuadPart;
-#endif
+#endif // RIO_PLATFORM_
 	}
 
-	inline void sleep(uint32_t ms)
+	inline void sleep(uint32_t milliSeconds)
 	{
 #if RIO_PLATFORM_POSIX
-		usleep(ms * 1000);
+		usleep(milliSeconds * 1000);
 #elif RIO_PLATFORM_WINDOWS
-		Sleep(ms);
-#endif
+		Sleep(milliSeconds);
+#endif // RIO_PLATFORM_
 	}
 
 	inline void* openLibrary(const char* path)
@@ -76,7 +76,7 @@ namespace OsFn
 		return ::dlopen(path, RTLD_LAZY);
 #elif RIO_PLATFORM_WINDOWS
 		return (void*)LoadLibraryA(path);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	inline void closeLibrary(void* library)
@@ -85,7 +85,7 @@ namespace OsFn
 		dlclose(library);
 #elif RIO_PLATFORM_WINDOWS
 		FreeLibrary((HMODULE)library);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	inline void* lookupSymbol(void* library, const char* name)
@@ -94,7 +94,7 @@ namespace OsFn
 		return ::dlsym(library, name);
 #elif RIO_PLATFORM_WINDOWS
 		return (void*)GetProcAddress((HMODULE)library, name);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	inline void log(const char* msg)
@@ -104,7 +104,7 @@ namespace OsFn
 #else
 		fputs(msg, stdout);
 		fflush(stdout);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	// Returns whether the <path> exists
@@ -114,7 +114,7 @@ namespace OsFn
 		return access(path, F_OK) != -1;
 #elif RIO_PLATFORM_WINDOWS
 		return _access(path, 0) != -1; // <corecrt_io.h>
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	// Returns whether <path> is a directory
@@ -130,7 +130,7 @@ namespace OsFn
 #elif RIO_PLATFORM_WINDOWS
 		DWORD fileAttributes = GetFileAttributes(path);
 		return (fileAttributes != INVALID_FILE_ATTRIBUTES && (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	// Is a regular file
@@ -242,13 +242,13 @@ namespace OsFn
 	void getFileList(const char* path, Vector<DynamicString>& files);
 
 	// Returns the current working directory
-	inline const char* getCurrentWorkingDirectory(char* buf, uint32_t size)
+	inline const char* getCurrentWorkingDirectory(char* buffer, uint32_t size)
 	{
 #if RIO_PLATFORM_POSIX
-		return ::getcwd(buf, size);
+		return ::getcwd(buffer, size);
 #elif RIO_PLATFORM_WINDOWS
-		GetCurrentDirectory(size, buf);
-		return buf;
+		GetCurrentDirectory(size, buffer);
+		return buffer;
 #endif // RIO_PLATFORM_
 	}
 
@@ -259,7 +259,7 @@ namespace OsFn
 		return ::getenv(name);
 #elif RIO_PLATFORM_WINDOWS
 		// TODO
-		// GetEnvironmentVariable(name, buf, size);
+		// GetEnvironmentVariable(name, buffer, size);
 #endif // RIO_PLATFORM_
 	}
 

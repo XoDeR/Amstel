@@ -110,7 +110,7 @@ namespace MemoryFn
 
 		void* allocate(uint32_t size, uint32_t align = Allocator::DEFAULT_ALIGN)
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 
 			uint32_t actualSize = getActualAllocationSize(size, align);
 
@@ -129,7 +129,7 @@ namespace MemoryFn
 
 		void deallocate(void* data)
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 
 			if (!data)
 			{
@@ -151,14 +151,14 @@ namespace MemoryFn
 
 		uint32_t getTotalAllocatedBytes()
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 			return allocatedSize;
 		}
 
 		// Returns the size (in bytes) of the block of memory pointed by <data>
 		uint32_t getSize(const void* data)
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 			Header* h = header(data);
 			return h->size;
 		}
@@ -214,7 +214,7 @@ namespace MemoryFn
 
 		void* allocate(uint32_t size, uint32_t align)
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 
 			RIO_ASSERT(align % 4 == 0, "Must be 4-byte aligned");
 			size = ((size + 3)/4) * 4;
@@ -248,7 +248,7 @@ namespace MemoryFn
 
 		void deallocate(void *p)
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 
 			if (!p)
 			{
@@ -285,14 +285,14 @@ namespace MemoryFn
 
 		uint32_t getAllocatedSize(const void *p)
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 			Header* h = header(p);
 			return h->size - uint32_t((char*)p - (char*)h);
 		}
 
 		uint32_t getTotalAllocatedBytes()
 		{
-			ScopedMutex sm(mutex);
+			ScopedMutex scopedMutex(mutex);
 			return uint32_t(ringBufferEnd - ringBufferBegin);
 		}
 

@@ -14,10 +14,9 @@
 	#include <sys/socket.h>
 	#include <unistd.h> // close
 #elif RIO_PLATFORM_WINDOWS
-	#include <winsock2.h>
-	#include "Device/Windows/Headers_Windows.h"
+	#include "Device/Windows/Headers_Windows.h" // already includes <WinSock2.h>
 	#pragma comment(lib, "Ws2_32.lib")
-#endif
+#endif // RIO_PLATFORM_
 
 namespace Rio
 {
@@ -322,7 +321,6 @@ struct TcpSocket
 		while (toSend > 0)
 		{
 #if RIO_PLATFORM_POSIX
-			ssize_t bytesWritten = ::send(socket, (const char*)buf, to_send, 0);
 
 			if (bytesWritten == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
 			{

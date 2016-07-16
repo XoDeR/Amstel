@@ -3,11 +3,12 @@
 
 #include "Core/Base/Types.h"
 #include "Core/Base/Platform.h"
+#include "Core/Error/Error.h"
 
-#include <stdio.h> // sscanf, vsnprintf
+#include <stdio.h> // sscanf; vsnprintf
 #include <string.h> // strlen
 #include <stdarg.h>
-#include <ctype.h> // isspace
+#include <ctype.h> // isspace; isdigit
 
 namespace Rio
 {
@@ -33,6 +34,7 @@ inline int32_t snPrintF(char* str, size_t n, const char* format, ...)
 
 inline uint32_t getStringLength32(const char* str)
 {
+	RIO_ASSERT(str != nullptr, "str is nullptr");
 	return (uint32_t)strlen(str);
 }
 
