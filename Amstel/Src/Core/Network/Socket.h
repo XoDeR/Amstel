@@ -321,6 +321,7 @@ struct TcpSocket
 		while (toSend > 0)
 		{
 #if RIO_PLATFORM_POSIX
+			ssize_t bytesWritten = ::send(socket, (const char*)buffer, toSend, 0);
 
 			if (bytesWritten == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
 			{
