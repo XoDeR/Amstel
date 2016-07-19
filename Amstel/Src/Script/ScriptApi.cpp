@@ -412,9 +412,9 @@ static int vector3_getString(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	const Vector3 v = scriptStack.getVector3(1);
-	char buf[256];
-	snPrintF(buf, sizeof(buf), "%.4f %.4f %.4f", v.x, v.y, v.z);
-	scriptStack.pushString(buf);
+	char buffer[256];
+	snPrintF(buffer, sizeof(buffer), "%.4f %.4f %.4f", v.x, v.y, v.z);
+	scriptStack.pushString(buffer);
 	return 1;
 }
 
@@ -1848,11 +1848,11 @@ static int renderWorld_getSpriteInstanceList(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	RenderWorld* renderWorld = scriptStack.getRenderWorld(1);
-	UnitId unit = scriptStack.getUnit(2);
+	UnitId unitId = scriptStack.getUnit(2);
 
 	TempAllocator512 ta;
 	Array<SpriteInstance> spriteInstanceList(ta);
-	renderWorld->getSpriteInstanceList(unit, spriteInstanceList);
+	renderWorld->getSpriteInstanceList(unitId, spriteInstanceList);
 
 	scriptStack.pushTable(ArrayFn::getCount(spriteInstanceList));
 	for (uint32_t i = 0; i < ArrayFn::getCount(spriteInstanceList); ++i)

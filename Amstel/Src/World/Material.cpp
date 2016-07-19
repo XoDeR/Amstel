@@ -42,7 +42,7 @@ void Material::bind(ResourceManager& resourceManager, ShaderManager& shaderManag
 
 	const ShaderData& shaderData = shaderManager.get(materialResource->shader);
 	bgfx::setState(shaderData.state);
-	bgfx::submit(view, shaderData.program);
+	bgfx::submit(view, shaderData.bgfxProgramHandle);
 }
 
 void Material::setFloat(StringId32 name, float value)

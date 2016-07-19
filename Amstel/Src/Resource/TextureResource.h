@@ -3,6 +3,7 @@
 
 #include "Core/Memory/MemoryTypes.h"
 #include "Core/FileSystem/FileSystemTypes.h"
+#include "Core/Strings/StringId.h"
 #include "Resource/ResourceTypes.h"
 #include "Resource/CompilerTypes.h"
 

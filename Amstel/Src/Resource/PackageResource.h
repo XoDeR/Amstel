@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Core/Strings/StringTypes.h"
+#include "Core/Strings/StringId.h"
 #include "Core/Containers/ContainerTypes.h"
 #include "Core/FileSystem/FileSystemTypes.h"
 #include "Core/Memory/MemoryTypes.h"

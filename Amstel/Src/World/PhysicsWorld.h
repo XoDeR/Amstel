@@ -96,7 +96,7 @@ public:
 	// Wakes the actor up
 	virtual void wakeUp(ActorInstance i) = 0;
 
-	virtual ControllerInstance createController(UnitId id, const ControllerDesc& cd, const Matrix4x4& transformMatrix) = 0;
+	virtual ControllerInstance createController(UnitId id, const ControllerDesc& controllerDesc, const Matrix4x4& transformMatrix) = 0;
 	virtual void destroyController(ControllerInstance id) = 0;
 	virtual ControllerInstance getController(UnitId id) = 0;
 	// Returns the position of the controller

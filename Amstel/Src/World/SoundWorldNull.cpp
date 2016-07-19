@@ -59,15 +59,15 @@ public:
 	{
 	}
 
-	virtual void setSoundPositions(uint32_t /*soundInstanceListCount*/, const SoundInstanceId* /*soundInstanceIdList*/, const Vector3* /*positions*/)
+	virtual void setSoundPositions(uint32_t /*soundInstanceListCount*/, const SoundInstanceId* /*soundInstanceIdList*/, const Vector3* /*positionList*/)
 	{
 	}
 
-	virtual void setSoundRanges(uint32_t /*soundInstanceListCount*/, const SoundInstanceId* /*soundInstanceIdList*/, const float* /*ranges*/)
+	virtual void setSoundRanges(uint32_t /*soundInstanceListCount*/, const SoundInstanceId* /*soundInstanceIdList*/, const float* /*rangeList*/)
 	{
 	}
 
-	virtual void setSoundVolumes(uint32_t /*soundInstanceListCount*/, const SoundInstanceId* /*soundInstanceIdList*/, const float* /*volumes*/)
+	virtual void setSoundVolumes(uint32_t /*soundInstanceListCount*/, const SoundInstanceId* /*soundInstanceIdList*/, const float* /*volumeList*/)
 	{
 	}
 

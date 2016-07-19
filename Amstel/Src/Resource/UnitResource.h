@@ -3,7 +3,9 @@
 
 #include "Core/Memory/MemoryTypes.h"
 #include "Core/FileSystem/FileSystemTypes.h"
+#include "Core/Strings/StringId.h"
 #include "Resource/CompilerTypes.h"
+#include <cstdint> // uint32_t
 
 namespace Rio
 {

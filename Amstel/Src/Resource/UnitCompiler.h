@@ -44,7 +44,7 @@ private:
 	using ComponentTypeInfoArray = Array<ComponentTypeInfo>;
 	
 public:
-	UnitCompiler(CompileOptions& opts);
+	UnitCompiler(CompileOptions& compileOptions);
 
 	Buffer readUnit(const char* name);
 	void compileUnit(const char* path);

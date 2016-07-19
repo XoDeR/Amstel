@@ -639,8 +639,8 @@ namespace ShaderResourceFn
 
 	struct ShaderCompiler
 	{
-		ShaderCompiler(CompileOptions& opts)
-			: compileOptions(opts)
+		ShaderCompiler(CompileOptions& compileOptions)
+			: compileOptions(compileOptions)
 			, renderStatesMap(getDefaultAllocator())
 			, samplerStatesMap(getDefaultAllocator())
 			, bgfxShadersMap(getDefaultAllocator())
@@ -1293,9 +1293,9 @@ namespace ShaderResourceFn
 		getDevice()->getShaderManager()->offline(id, resourceManager);
 	}
 
-	void unload(Allocator& a, void* res)
+	void unload(Allocator& a, void* resource)
 	{
-		getDevice()->getShaderManager()->unload(a, res);
+		getDevice()->getShaderManager()->unload(a, resource);
 	}
 } // namespace ShaderResourceFn
 

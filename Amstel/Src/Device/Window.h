@@ -29,11 +29,11 @@ struct Window
 
 namespace WindowFn
 {
-	// Creates a new window.
+	// Creates a new window
 	Window* create(Allocator& a);
-	// Destroys the window @a w.
-	void destroy(Allocator& a, Window& w);
+	// Destroys the window <window>
+	void destroy(Allocator& a, Window& window);
 } // namespace WindowFn
 
 } // namespace Rio
-  // Copyright (c) 2016 Volodymyr Syvochka
+// Copyright (c) 2016 Volodymyr Syvochka

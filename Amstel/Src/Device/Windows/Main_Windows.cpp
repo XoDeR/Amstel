@@ -4,19 +4,19 @@
 #if RIO_PLATFORM_WINDOWS
 
 #include "Core/Base/CommandLine.h"
+#include "Core/Thread/Thread.h"
 #include "Device/Device.h"
 #include "Device/Display.h"
 #include "Device/OsEventQueue.h"
-#include "Core/Thread/Thread.h"
+#include "Device/Windows/Headers_Windows.h"
+
 #include "Core/UnitTests.cpp"
 
 #include <bgfx/bgfxplatform.h>
-#include <winsock2.h>
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
+
 #include <windowsx.h>
-#include <xinput.h>
+#include <Xinput.h>
+#pragma comment(lib, "Xinput.lib")
 
 namespace Rio
 {
@@ -538,10 +538,10 @@ struct Window_Windows : public Window
 
 	const char* getTitle()
 	{
-		static char buf[512];
-		memset(buf, 0, sizeof(buf));
-		GetWindowText(windowHandle, buf, sizeof(buf));
-		return buf;
+		static char buffer[512];
+		memset(buffer, 0, sizeof(buffer));
+		GetWindowText(windowHandle, buffer, sizeof(buffer));
+		return buffer;
 	}
 
 	void setTitle(const char* title)

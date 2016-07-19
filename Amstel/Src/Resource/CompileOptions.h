@@ -13,14 +13,14 @@
 
 #include <setjmp.h> // jmp_buf
 
-#define RESOURCE_COMPILER_ASSERT(condition, opts, msg, ...) do { if (!(condition))\
-	{ opts.error(msg, ##__VA_ARGS__); } } while(0)
+#define RESOURCE_COMPILER_ASSERT(condition, compileOptions, msg, ...) do { if (!(condition))\
+	{ compileOptions.error(msg, ##__VA_ARGS__); } } while(0)
 
-#define RESOURCE_COMPILER_ASSERT_RESOURCE_EXISTS(type, name, opts)\
-	RESOURCE_COMPILER_ASSERT(opts.doesResourceExist(type, name), opts, "Resource does not exist: '%s.%s'", name, type)
+#define RESOURCE_COMPILER_ASSERT_RESOURCE_EXISTS(type, name, compileOptions)\
+	RESOURCE_COMPILER_ASSERT(compileOptions.doesResourceExist(type, name), compileOptions, "Resource does not exist: '%s.%s'", name, type)
 
-#define RESOURCE_COMPILER_ASSERT_FILE_EXISTS(name, opts)\
-	RESOURCE_COMPILER_ASSERT(opts.doesFileExist(name), opts, "File does not exist: '%s'", name)
+#define RESOURCE_COMPILER_ASSERT_FILE_EXISTS(name, compileOptions)\
+	RESOURCE_COMPILER_ASSERT(compileOptions.doesFileExist(name), compileOptions, "File does not exist: '%s'", name)
 
 namespace Rio
 {
@@ -28,8 +28,8 @@ namespace Rio
 class CompileOptions
 {
 public:
-	CompileOptions(FileSystem& source_fs, FileSystem& bundleFileSystem, Buffer& outputBuffer, const char* platformName, jmp_buf* jmpBuf)
-		: sourceFileSystem(source_fs)
+	CompileOptions(FileSystem& sourceFileSystem, FileSystem& bundleFileSystem, Buffer& outputBuffer, const char* platformName, jmp_buf* jmpBuf)
+		: sourceFileSystem(sourceFileSystem)
 		, bundleFileSystem(bundleFileSystem)
 		, outputBuffer(outputBuffer)
 		, platformName(platformName)
@@ -70,11 +70,11 @@ public:
 	{
 		File* file = bundleFileSystem.open(path, FileOpenMode::READ);
 		uint32_t size = file->getSize();
-		Buffer buf(getDefaultAllocator());
-		ArrayFn::resize(buf, size);
-		file->read(ArrayFn::begin(buf), size);
+		Buffer buffer(getDefaultAllocator());
+		ArrayFn::resize(buffer, size);
+		file->read(ArrayFn::begin(buffer), size);
 		bundleFileSystem.close(*file);
-		return buf;
+		return buffer;
 	}
 
 	void writeTemporary(const char* path, const char* data, uint32_t size)
@@ -95,11 +95,11 @@ public:
 
 		File* file = sourceFileSystem.open(path, FileOpenMode::READ);
 		uint32_t size = file->getSize();
-		Buffer buf(getDefaultAllocator());
-		ArrayFn::resize(buf, size);
-		file->read(ArrayFn::begin(buf), size);
+		Buffer buffer(getDefaultAllocator());
+		ArrayFn::resize(buffer, size);
+		file->read(ArrayFn::begin(buffer), size);
 		sourceFileSystem.close(*file);
-		return buf;
+		return buffer;
 	}
 
 	void getAbsolutePath(const char* path, DynamicString& abs)

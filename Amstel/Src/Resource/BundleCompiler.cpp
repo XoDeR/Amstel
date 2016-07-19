@@ -142,15 +142,15 @@ bool BundleCompiler::compile(DiskFileSystem& bundleFileSystem, const char* type,
 	RIO_LOGI("%s <= %s", destinationPath.getCStr(), sourcePath.getCStr());
 
 	bool success = true;
-	jmp_buf buf;
+	jmp_buf jmpBuffer;
 
 	Buffer output(getDefaultAllocator());
 	ArrayFn::reserve(output, 4*1024*1024);
 
-	if (!setjmp(buf))
+	if (!setjmp(jmpBuffer))
 	{
-		CompileOptions opts(sourceFileSystem, bundleFileSystem, output, platform, &buf);
-		compile(resourceType, sourcePath.getCStr(), opts);
+		CompileOptions compileOptions(sourceFileSystem, bundleFileSystem, output, platform, &jmpBuffer);
+		compile(resourceType, sourcePath.getCStr(), compileOptions);
 		File* outputFile = bundleFileSystem.open(path.getCStr(), FileOpenMode::WRITE);
 		uint32_t size = ArrayFn::getCount(output);
 		uint32_t written = outputFile->write(ArrayFn::begin(output), size);
@@ -167,7 +167,7 @@ bool BundleCompiler::compile(DiskFileSystem& bundleFileSystem, const char* type,
 
 bool BundleCompiler::compile(const char* bundleDirectory, const char* platform)
 {
-	// Create bundle dir if necessary
+	// Create bundle directory if necessary
 	DiskFileSystem bundleFileSystem(getDefaultAllocator());
 	bundleFileSystem.setPrefix(bundleDirectory);
 	bundleFileSystem.createDirectory("");
@@ -233,11 +233,11 @@ void BundleCompiler::registerResourceCompiler(StringId64 type, uint32_t version,
 	SortMapFn::sort(resourceCompilerTable);
 }
 
-void BundleCompiler::compile(StringId64 type, const char* path, CompileOptions& opts)
+void BundleCompiler::compile(StringId64 type, const char* path, CompileOptions& compileOptions)
 {
 	RIO_ASSERT(SortMapFn::has(resourceCompilerTable, type), "Compiler not found");
 
-	SortMapFn::get(resourceCompilerTable, type, ResourceTypeData()).compileFunction(path, opts);
+	SortMapFn::get(resourceCompilerTable, type, ResourceTypeData()).compileFunction(path, compileOptions);
 }
 
 uint32_t BundleCompiler::getResourceCompilerVersion(StringId64 type)

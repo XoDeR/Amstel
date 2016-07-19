@@ -205,7 +205,7 @@ public:
 	{
 	}
 
-	virtual ControllerInstance createController(UnitId /*id*/, const ControllerDesc& /*cd*/, const Matrix4x4& /*transformMatrix*/)
+	virtual ControllerInstance createController(UnitId /*id*/, const ControllerDesc& /*controllerDesc*/, const Matrix4x4& /*transformMatrix*/)
 	{
 		return makeControllerInstance(UINT32_MAX);
 	}

@@ -6,6 +6,7 @@
 #include "Core/Math/MathTypes.h"
 #include "Core/Containers/ContainerTypes.h"
 #include "Core/Containers/Array.h"
+#include "Core/Strings/StringId.h"
 
 #include "Resource/ResourceTypes.h"
 #include "Resource/CompilerTypes.h"

@@ -40,7 +40,7 @@ namespace ProfilerFn
 
 	static void flush_local_buffer()
 	{
-		ScopedMutex sm(_buffer_mutex);
+		ScopedMutex scopedMutex(_buffer_mutex);
 		ArrayFn::push(*ProfilerGlobalFn::buffer, _thread_buffer, _thread_buffer_size);
 		_thread_buffer_size = 0;
 	}

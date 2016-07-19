@@ -29,28 +29,28 @@ namespace FontResourceFn
 	void parseGlyph(const char* json, GlyphInfo& glyph)
 	{
 		TempAllocator512 ta;
-		JsonObject obj(ta);
-		JsonRFn::parse(json, obj);
+		JsonObject jsonObject(ta);
+		JsonRFn::parse(json, jsonObject);
 
-		glyph.codePoint = JsonRFn::parseInt(obj["id"]);
-		glyph.glyphData.x = JsonRFn::parseFloat(obj["x"]);
-		glyph.glyphData.y = JsonRFn::parseFloat(obj["y"]);
-		glyph.glyphData.width = JsonRFn::parseFloat(obj["width"]);
-		glyph.glyphData.height = JsonRFn::parseFloat(obj["height"]);
-		glyph.glyphData.xOffset = JsonRFn::parseFloat(obj["xOffset"]);
-		glyph.glyphData.yOffset = JsonRFn::parseFloat(obj["yOffset"]);
-		glyph.glyphData.xAdvance = JsonRFn::parseFloat(obj["xAdvance"]);
+		glyph.codePoint = JsonRFn::parseInt(jsonObject["id"]);
+		glyph.glyphData.x = JsonRFn::parseFloat(jsonObject["x"]);
+		glyph.glyphData.y = JsonRFn::parseFloat(jsonObject["y"]);
+		glyph.glyphData.width = JsonRFn::parseFloat(jsonObject["width"]);
+		glyph.glyphData.height = JsonRFn::parseFloat(jsonObject["height"]);
+		glyph.glyphData.xOffset = JsonRFn::parseFloat(jsonObject["xOffset"]);
+		glyph.glyphData.yOffset = JsonRFn::parseFloat(jsonObject["yOffset"]);
+		glyph.glyphData.xAdvance = JsonRFn::parseFloat(jsonObject["xAdvance"]);
 	}
 
-	void compile(const char* path, CompileOptions& opts)
+	void compile(const char* path, CompileOptions& compileOptions)
 	{
-		Buffer buf = opts.read(path);
+		Buffer buffer = compileOptions.read(path);
 
 		TempAllocator4096 ta;
 		JsonObject object(ta);
 		JsonArray glyphs(ta);
 
-		JsonRFn::parse(buf, object);
+		JsonRFn::parse(buffer, object);
 		JsonRFn::parseArray(object["glyphs"], glyphs);
 
 		const uint32_t textureSize = JsonRFn::parseInt(object["size"]);
@@ -67,35 +67,35 @@ namespace FontResourceFn
 
 		std::sort(ArrayFn::begin(glyphInfoList), ArrayFn::end(glyphInfoList));
 
-		opts.write(RESOURCE_VERSION_FONT);
-		opts.write(glyphCount);
-		opts.write(textureSize);
-		opts.write(fontSize);
+		compileOptions.write(RESOURCE_VERSION_FONT);
+		compileOptions.write(glyphCount);
+		compileOptions.write(textureSize);
+		compileOptions.write(fontSize);
 
 		for (uint32_t i = 0; i < ArrayFn::getCount(glyphInfoList); ++i)
 		{
-			opts.write(glyphInfoList[i].codePoint);
+			compileOptions.write(glyphInfoList[i].codePoint);
 		}
 
 		for (uint32_t i = 0; i < ArrayFn::getCount(glyphInfoList); ++i)
 		{
-			opts.write(glyphInfoList[i].glyphData.x);
-			opts.write(glyphInfoList[i].glyphData.y);
-			opts.write(glyphInfoList[i].glyphData.width);
-			opts.write(glyphInfoList[i].glyphData.height);
-			opts.write(glyphInfoList[i].glyphData.xOffset);
-			opts.write(glyphInfoList[i].glyphData.yOffset);
-			opts.write(glyphInfoList[i].glyphData.xAdvance);
+			compileOptions.write(glyphInfoList[i].glyphData.x);
+			compileOptions.write(glyphInfoList[i].glyphData.y);
+			compileOptions.write(glyphInfoList[i].glyphData.width);
+			compileOptions.write(glyphInfoList[i].glyphData.height);
+			compileOptions.write(glyphInfoList[i].glyphData.xOffset);
+			compileOptions.write(glyphInfoList[i].glyphData.yOffset);
+			compileOptions.write(glyphInfoList[i].glyphData.xAdvance);
 		}
 	}
 
 	void* load(File& file, Allocator& a)
 	{
 		const uint32_t size = file.getSize();
-		void* res = a.allocate(size);
-		file.read(res, size);
-		RIO_ASSERT(*(uint32_t*)res == RESOURCE_VERSION_FONT, "Wrong version");
-		return res;
+		void* resource = a.allocate(size);
+		file.read(resource, size);
+		RIO_ASSERT(*(uint32_t*)resource == RESOURCE_VERSION_FONT, "Wrong version");
+		return resource;
 	}
 
 	void unload(Allocator& allocator, void* resource)

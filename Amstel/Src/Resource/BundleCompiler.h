@@ -11,7 +11,7 @@ namespace Rio
 class BundleCompiler
 {
 private:
-	using CompileFunction = void (*)(const char* path, CompileOptions& opts);
+	using CompileFunction = void (*)(const char* path, CompileOptions& compileOptions);
 
 	struct ResourceTypeData
 	{
@@ -30,7 +30,7 @@ public:
 	// Returns the version of the compiler for <type>
 	uint32_t getResourceCompilerVersion(StringId64 type);
 private:
-	void compile(StringId64 type, const char* path, CompileOptions& opts);
+	void compile(StringId64 type, const char* path, CompileOptions& compileOptions);
 	void scanSourceDirectory(const char* path);
 	bool compile(DiskFileSystem& bundleFileSystem, const char* type, const char* name, const char* platform);
 

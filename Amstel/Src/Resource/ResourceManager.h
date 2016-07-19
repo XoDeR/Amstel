@@ -70,7 +70,7 @@ public:
 	// Returns the data of the resource (<type>, <name>)
 	const void* get(StringId64 type, StringId64 name);
 	// Sets whether resources should be automatically loaded when accessed
-	void enableAutoload(bool enable);
+	void enableResourceAutoload(bool enable);
 	// Blocks until all load() requests have been completed
 	void flush();
 	// Completes all load() requests which have been loaded by ResourceLoader
@@ -87,7 +87,7 @@ private:
 	ResourceLoader* resourceLoader;
 	ResourceTypeDataMap resourceTypeDataMap;
 	ResourceMap resourceMap;
-	bool autoloadEnabled = false;
+	bool resourceAutoloadEnabled = false;
 };
 
 } // namespace Rio

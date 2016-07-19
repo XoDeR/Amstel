@@ -74,10 +74,10 @@ struct BgfxCallback : public bgfx::CallbackI
 
 	virtual void traceVargs(const char* /*filePath*/, uint16_t /*line*/, const char* format, va_list argList)
 	{
-		char buf[2048];
-		strncpy(buf, format, sizeof(buf));
-		buf[getStringLength32(buf)-1] = '\0'; // Remove trailing newline
-		RIO_LOGDV(buf, argList);
+		char buffer[2048];
+		strncpy(buffer, format, sizeof(buffer));
+		buffer[getStringLength32(buffer)-1] = '\0'; // Remove trailing newline
+		RIO_LOGDV(buffer, argList);
 	}
 
 	virtual uint32_t cacheReadSize(uint64_t /*id*/)
@@ -143,20 +143,20 @@ private:
 static void consoleCommandExecuteScript(void* /*data*/, ConsoleServer& /*cs*/, TcpSocket /*client*/, const char* json)
 {
 	TempAllocator4096 ta;
-	JsonObject obj(ta);
+	JsonObject jsonObject(ta);
 	DynamicString script(ta);
-	JsonRFn::parse(json, obj);
-	JsonRFn::parseString(obj["script"], script);
+	JsonRFn::parse(json, jsonObject);
+	JsonRFn::parseString(jsonObject["script"], script);
 	getDevice()->getScriptEnvironment()->executeScriptString(script.getCStr());
 }
 
 static void consoleCommandReloadResource(void* /*data*/, ConsoleServer& /*cs*/, TcpSocket /*client*/, const char* json)
 {
 	TempAllocator4096 ta;
-	JsonObject obj(ta);
-	JsonRFn::parse(json, obj);
-	StringId64 type = JsonRFn::parseResourceId(obj["resourceType"]);
-	StringId64 name = JsonRFn::parseResourceId(obj["resourceName"]);
+	JsonObject jsonObject(ta);
+	JsonRFn::parse(json, jsonObject);
+	StringId64 type = JsonRFn::parseResourceId(jsonObject["resourceType"]);
+	StringId64 name = JsonRFn::parseResourceId(jsonObject["resourceName"]);
  	getDevice()->reload(type, name);
 }
 
@@ -173,30 +173,30 @@ static void consoleCommandUnpause(void* /*data*/, ConsoleServer& /*cs*/, TcpSock
 static void consoleCommandCompileResource(void* data, ConsoleServer& cs, TcpSocket client, const char* json)
 {
 	TempAllocator4096 ta;
-	JsonObject obj(ta);
-	JsonRFn::parse(json, obj);
+	JsonObject jsonObject(ta);
+	JsonRFn::parse(json, jsonObject);
 
 	DynamicString id(ta);
 	DynamicString bundleDirectory(ta);
 	DynamicString platform(ta);
-	JsonRFn::parseString(obj["id"], id);
-	JsonRFn::parseString(obj["bundleDirectory"], bundleDirectory);
-	JsonRFn::parseString(obj["platform"], platform);
+	JsonRFn::parseString(jsonObject["id"], id);
+	JsonRFn::parseString(jsonObject["bundleDirectory"], bundleDirectory);
+	JsonRFn::parseString(jsonObject["platform"], platform);
 
 	{
 		TempAllocator512 ta;
-		StringStream ss(ta);
-		ss << "{\"type\":\"compile\",\"id\":\"" << id.getCStr() << "\",\"start\":true}";
-		cs.send(client, StringStreamFn::getCStr(ss));
+		StringStream stringStream(ta);
+		stringStream << "{\"type\":\"compile\",\"id\":\"" << id.getCStr() << "\",\"start\":true}";
+		cs.send(client, StringStreamFn::getCStr(stringStream));
 	}
 
 	BundleCompiler* bc = (BundleCompiler*)data;
 	bool success = bc->compile(bundleDirectory.getCStr(), platform.getCStr());
 	{
 		TempAllocator512 ta;
-		StringStream ss(ta);
-		ss << "{\"type\":\"compile\",\"id\":\"" << id.getCStr() << "\",\"success\":" << (success ? "true" : "false") << "}";
-		cs.send(client, StringStreamFn::getCStr(ss));
+		StringStream stringStream(ta);
+		stringStream << "{\"type\":\"compile\",\"id\":\"" << id.getCStr() << "\",\"success\":" << (success ? "true" : "false") << "}";
+		cs.send(client, StringStreamFn::getCStr(stringStream));
 	}
 }
 
@@ -382,18 +382,18 @@ void Device::run()
 		bundleCompiler = RIO_NEW(allocator, BundleCompiler)();
 		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_CONFIG, RESOURCE_VERSION_CONFIG, ConfigResourceFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_TEXTURE,          RESOURCE_VERSION_TEXTURE, TextureResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_MESH,             RESOURCE_VERSION_MESH, MeshResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_TEXTURE, RESOURCE_VERSION_TEXTURE, TextureResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_MESH, RESOURCE_VERSION_MESH, MeshResourceFn::compile);
 		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SHADER, RESOURCE_VERSION_SHADER, ShaderResourceFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_UNIT,             RESOURCE_VERSION_UNIT, UnitResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_UNIT, RESOURCE_VERSION_UNIT, UnitResourceFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_PACKAGE,          RESOURCE_VERSION_PACKAGE, PackageResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_PACKAGE, RESOURCE_VERSION_PACKAGE, PackageResourceFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_MATERIAL,         RESOURCE_VERSION_MATERIAL, MaterialResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_MATERIAL, RESOURCE_VERSION_MATERIAL, MaterialResourceFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_FONT,             RESOURCE_VERSION_FONT, FontResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_LEVEL,            RESOURCE_VERSION_LEVEL, LevelResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_FONT, RESOURCE_VERSION_FONT, FontResourceFn::compile);
+		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_LEVEL, RESOURCE_VERSION_LEVEL, LevelResourceFn::compile);
 		
 
 		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SPRITE, RESOURCE_VERSION_SPRITE, SpriteResourceFn::compile);
@@ -438,8 +438,8 @@ void Device::run()
 		const char* bundleDirectory = deviceOptions.bundleDirectory;
 		if (bundleDirectory != nullptr)
 		{
-			char buf[1024];
-			bundleDirectory = OsFn::getCurrentWorkingDirectory(buf, sizeof(buf));
+			char buffer[1024];
+			bundleDirectory = OsFn::getCurrentWorkingDirectory(buffer, sizeof(buffer));
 		}
 		bundleFileSystem = RIO_NEW(allocator, DiskFileSystem)(getDefaultAllocator());
 		((DiskFileSystem*)bundleFileSystem)->setPrefix(bundleDirectory);
@@ -688,24 +688,24 @@ void Device::render(World& world, CameraInstance camera)
 
 World* Device::createWorld()
 {
-	World* w = RIO_NEW(getDefaultAllocator(), World)(getDefaultAllocator()
+	World* world = RIO_NEW(getDefaultAllocator(), World)(getDefaultAllocator()
 		, *resourceManager
 		, *shaderManager
 		, *materialManager
 		, *unitManager
 		, *scriptEnvironment
 		);
-	ArrayFn::pushBack(worldList, w);
-	return w;
+	ArrayFn::pushBack(worldList, world);
+	return world;
 }
 
-void Device::destroyWorld(World& w)
+void Device::destroyWorld(World& world)
 {
 	for (uint32_t i = 0, n = ArrayFn::getCount(worldList); i < n; ++i)
 	{
-		if (&w == worldList[i])
+		if (&world == worldList[i])
 		{
-			RIO_DELETE(getDefaultAllocator(), &w);
+			RIO_DELETE(getDefaultAllocator(), &world);
 			worldList[i] = worldList[n - 1];
 			ArrayFn::popBack(worldList);
 			return;
@@ -737,7 +737,7 @@ void Device::reload(StringId64 type, StringId64 name)
 	}
 }
 
-static StringStream& sanitize(StringStream& ss, const char* msg)
+static StringStream& sanitize(StringStream& stringStream, const char* msg)
 {
 	using namespace StringStreamFn;
 	const char* ch = msg;
@@ -745,15 +745,21 @@ static StringStream& sanitize(StringStream& ss, const char* msg)
 	{
 		if (*ch == '"' || *ch == '\\')
 		{
-			ss << "\\";
+			stringStream << "\\";
 		}
-		ss << *ch;
+		stringStream << *ch;
 	}
 
-	return ss;
+	return stringStream;
 }
 
-static const char* logSeverityNameMap[] = { "info", "warning", "error", "debug" };
+static const char* logSeverityNameMap[] = 
+{ 
+	"info", 
+	"warning", 
+	"error", 
+	"debug" 
+};
 RIO_STATIC_ASSERT(RIO_COUNTOF(logSeverityNameMap) == LogSeverity::COUNT);
 
 void Device::log(const char* msg, LogSeverity::Enum severity)
@@ -832,10 +838,10 @@ Window* Device::getMainWindow()
 char buffer[sizeof(Device)];
 Device* device = nullptr;
 
-void run(const DeviceOptions& opts)
+void run(const DeviceOptions& deviceOptions)
 {
 	RIO_ASSERT(device == nullptr, "Rio engine already initialized");
-	device = new (buffer) Device(opts);
+	device = new (buffer) Device(deviceOptions);
 	device->run();
 	device->~Device();
 	device = nullptr;

@@ -13,11 +13,11 @@ namespace ConfigResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
-		Buffer buf = compileOptions.read(path);
+		Buffer buffer = compileOptions.read(path);
 
 		TempAllocator1024 ta;
 		JsonObject boot(ta);
-		JsonRFn::parse(buf, boot);
+		JsonRFn::parse(buffer, boot);
 
 		const char* bootScriptJson  = MapFn::get(boot, FixedString("bootScript"), (const char*)nullptr);
 		const char* bootPackageJson = MapFn::get(boot, FixedString("bootPackage"), (const char*)nullptr);
@@ -31,7 +31,7 @@ namespace ConfigResourceFn
 		RESOURCE_COMPILER_ASSERT_RESOURCE_EXISTS(RESOURCE_EXTENSION_SCRIPT, bootScript.getCStr(), compileOptions);
 		RESOURCE_COMPILER_ASSERT_RESOURCE_EXISTS(RESOURCE_EXTENSION_PACKAGE, bootPackage.getCStr(), compileOptions);
 
-		compileOptions.write(buf);
+		compileOptions.write(buffer);
 	}
 
 	void* load(File& file, Allocator& a)

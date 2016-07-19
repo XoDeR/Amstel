@@ -16,7 +16,7 @@ struct InputDevice
 	// Returns whether the input device is connected and functioning
 	bool getIsConnected() const;
 	// Returns the number of buttons of the input device
-	uint8_t getButtonCount() const;
+	uint8_t getButtonsCount() const;
 	// Returns the number of axes of the input devices
 	uint8_t getAxesCount() const;
 	// Returns whether the button <id> is pressed in the current frame

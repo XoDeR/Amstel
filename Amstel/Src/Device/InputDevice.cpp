@@ -20,7 +20,7 @@ bool InputDevice::getIsConnected() const
 	return isConnected;
 }
 
-uint8_t InputDevice::getButtonCount() const
+uint8_t InputDevice::getButtonsCount() const
 {
 	return buttonListCount;
 }

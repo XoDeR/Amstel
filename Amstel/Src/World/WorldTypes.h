@@ -183,14 +183,12 @@ struct EventType
 
 struct UnitId
 {
-	uint32_t index;
-
-	uint32_t index() const
+	uint32_t getIndex() const
 	{
 		return index & UNIT_INDEX_MASK;
 	}
 
-	uint32_t id() const
+	uint32_t getId() const
 	{
 		return (index >> UNIT_INDEX_BITS) & UNIT_ID_MASK;
 	}
@@ -199,6 +197,8 @@ struct UnitId
 	{
 		return index != UINT32_MAX;
 	}
+
+	uint32_t index;
 };
 
 inline bool operator==(const UnitId& a, const UnitId& b)

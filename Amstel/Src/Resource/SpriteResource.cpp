@@ -40,11 +40,11 @@ namespace SpriteResourceFn
 
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
-		Buffer buf = compileOptions.read(path);
+		Buffer buffer = compileOptions.read(path);
 
 		TempAllocator4096 ta;
 		JsonObject object(ta);
-		JsonRFn::parse(buf, object);
+		JsonRFn::parse(buffer, object);
 
 		JsonArray frames(ta);
 		JsonRFn::parseArray(object["frames"], frames);

@@ -167,8 +167,8 @@ namespace PhysicsResourceFn
 		Matrix4x4 localMatrix = JsonRFn::parseMatrix4x4(node["localMatrix"]);
 		colliderDesc.localTransformMatrix = localMatrix;
 
-		JsonArray positions(ta);
-		JsonRFn::parseArray(geometry["position"], positions);
+		JsonArray positionList(ta);
+		JsonRFn::parseArray(geometry["position"], positionList);
 
 		JsonObject indices(ta);
 		JsonArray indicesData(ta);
@@ -178,12 +178,12 @@ namespace PhysicsResourceFn
 		JsonRFn::parseArray(indicesData[0], positionIndexList);
 
 		Array<Vector3> points(getDefaultAllocator());
-		for (uint32_t i = 0; i < ArrayFn::getCount(positions); i += 3)
+		for (uint32_t i = 0; i < ArrayFn::getCount(positionList); i += 3)
 		{
 			Vector3 p;
-			p.x = JsonRFn::parseFloat(positions[i + 0]);
-			p.y = JsonRFn::parseFloat(positions[i + 1]);
-			p.z = JsonRFn::parseFloat(positions[i + 2]);
+			p.x = JsonRFn::parseFloat(positionList[i + 0]);
+			p.y = JsonRFn::parseFloat(positionList[i + 1]);
+			p.z = JsonRFn::parseFloat(positionList[i + 2]);
 			ArrayFn::pushBack(points, p*localMatrix);
 		}
 

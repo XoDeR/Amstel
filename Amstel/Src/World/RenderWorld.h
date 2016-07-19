@@ -63,7 +63,7 @@ public:
 
 	void render(const Matrix4x4& view, const Matrix4x4& projection);
 	void enableDebugDrawing(bool enable);
-	void drawDebug(DebugLine& dl);
+	void drawDebug(DebugLine& debugLine);
 
 	static const uint32_t MARKER = 0xc82277de;
 private:

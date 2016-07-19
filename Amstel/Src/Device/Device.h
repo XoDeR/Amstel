@@ -34,7 +34,7 @@ struct BgfxCallback;
 class Device
 {
 public:
-	explicit Device(const DeviceOptions& opts);
+	explicit Device(const DeviceOptions& deviceOptions);
 	void run();
 
 	// Returns the number of command line parameters
@@ -88,8 +88,8 @@ public:
 	void render(World& world, CameraInstance camera);
 	// Creates a new world
 	World* createWorld();
-	// Destroys the world <w>
-	void destroyWorld(World& w);
+	// Destroys the world <world>
+	void destroyWorld(World& world);
 	// Returns the resource package <id>
 	ResourcePackage* createResourcePackage(StringId64 id);
 	// Destroys the resource package
@@ -168,7 +168,7 @@ private:
 };
 
 // Runs the engine
-void run(const DeviceOptions& opts);
+void run(const DeviceOptions& deviceOptions);
 
 // Returns the device
 Device* getDevice();

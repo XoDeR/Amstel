@@ -57,7 +57,7 @@ void ResourceManager::load(StringId64 type, StringId64 name)
 		ResourceRequest resourceRequest;
 		resourceRequest.type = type;
 		resourceRequest.name = name;
-		resourceRequest.load_function = SortMapFn::get(resourceTypeDataMap, type, ResourceTypeData()).load;
+		resourceRequest.loadFunction = SortMapFn::get(resourceTypeDataMap, type, ResourceTypeData()).load;
 		resourceRequest.allocator = &resourceHeap;
 		resourceRequest.data = nullptr;
 
@@ -102,7 +102,7 @@ void ResourceManager::reload(StringId64 type, StringId64 name)
 bool ResourceManager::canGet(StringId64 type, StringId64 name)
 {
 	const ResourcePair id = { type, name };
-	return autoloadEnabled ? true : SortMapFn::has(resourceMap, id);
+	return resourceAutoloadEnabled ? true : SortMapFn::has(resourceMap, id);
 }
 
 const void* ResourceManager::get(StringId64 type, StringId64 name)
@@ -122,7 +122,7 @@ const void* ResourceManager::get(StringId64 type, StringId64 name)
 	RIO_UNUSED(resourceTypeStr);
 	RIO_UNUSED(resourceNameStr);
 
-	if (autoloadEnabled && !SortMapFn::has(resourceMap, id))
+	if (resourceAutoloadEnabled && !SortMapFn::has(resourceMap, id))
 	{
 		load(type, name);
 		flush();
@@ -132,9 +132,9 @@ const void* ResourceManager::get(StringId64 type, StringId64 name)
 	return entry.data;
 }
 
-void ResourceManager::enableAutoload(bool autoloadEnabled)
+void ResourceManager::enableResourceAutoload(bool resourceAutoloadEnabled)
 {
-	this->autoloadEnabled = autoloadEnabled;
+	this->resourceAutoloadEnabled = resourceAutoloadEnabled;
 }
 
 void ResourceManager::flush()

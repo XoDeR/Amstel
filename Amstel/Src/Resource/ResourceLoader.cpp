@@ -111,6 +111,7 @@ int32_t ResourceLoader::run()
 		PathFn::join(RIO_DATA_DIRECTORY, resoursePath.getCStr(), path);
 
 		File* file = fileSystem.open(path.getCStr(), FileOpenMode::READ);
+		
 		resourceRequest.data = resourceRequest.loadFunction(*file, *resourceRequest.allocator);
 		fileSystem.close(*file);
 

@@ -1,11 +1,12 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Device/Log.h"
-#include "Device/Device.h"
-#include "Core/Thread/Mutex.h"
+
 #include "Core/Base/Os.h"
 #include "Core/Base/Platform.h"
+#include "Core/Thread/Mutex.h"
 #include "Core/Strings/StringUtils.h"
 #include "Core/Memory/TempAllocator.h"
+#include "Device/Device.h"
 
 namespace Rio
 {
@@ -16,11 +17,11 @@ namespace LogInternalFn
 
 	void logEx(LogSeverity::Enum sev, const char* msg, va_list args)
 	{
-		ScopedMutex sm(mutex);
+		ScopedMutex scopedMutex(mutex);
 
-		char buf[8192];
-		int length = vsnPrintF(buf, sizeof(buf), msg, args);
-		buf[length] = '\0';
+		char buffer[8192];
+		int length = vsnPrintF(buffer, sizeof(buffer), msg, args);
+		buffer[length] = '\0';
 
 #if RIO_PLATFORM_POSIX
 		#define ANSI_RESET  "\x1b[0m"
@@ -36,16 +37,16 @@ namespace LogInternalFn
 		};
 
 		OsFn::log(stt[sev]);
-		OsFn::log(buf);
+		OsFn::log(buffer);
 		OsFn::log(ANSI_RESET);
 #else
-		OsFn::log(buf);
+		OsFn::log(buffer);
 #endif // RIO_PLATFORM_POSIX
 		OsFn::log("\n");
 
 		if (getDevice())
 		{
-			getDevice()->log(buf, sev);
+			getDevice()->log(buffer, sev);
 		}
 	}
 

@@ -1,6 +1,7 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #pragma once
 
+#include "Config.h"
 #include "Core/Base/Types.h"
 #include "Core/Base/Platform.h"
 
@@ -9,7 +10,7 @@ namespace Rio
 
 struct DeviceOptions
 {
-	DeviceOptions(int argc, const char** argv);
+	DeviceOptions(int argumentListCount, const char** argumentList);
 
 	// Parses the command line and returns EXIT_SUCCESS if no error is found
 	int parse();
