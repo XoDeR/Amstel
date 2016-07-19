@@ -1,0 +1,9 @@
+#
+# fips-bullet
+#
+---
+exports:
+    header-dirs:
+        - bullet3/src
+    modules:
+        Bullet: .
