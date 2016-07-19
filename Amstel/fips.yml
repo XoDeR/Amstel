@@ -1,0 +1,9 @@
+# fips Amstel
+---
+imports:
+    bgfx:
+        git:    https://github.com/XoDeR/fips-bgfx.git
+    luajit:
+        git:    https://github.com/XoDeR/LuaJit.git
+    fips-bullet:
+        git: https://github.com/XoDeR/fips-bullet.git

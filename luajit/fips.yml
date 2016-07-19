@@ -1,0 +1,8 @@
+#
+# luajit
+#
+---
+exports:
+    header-dirs: [ src ]
+    modules:
+        lua51: .
