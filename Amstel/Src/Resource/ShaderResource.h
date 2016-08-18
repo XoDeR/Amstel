@@ -32,14 +32,14 @@ struct ShaderResource
 	Array<Data> data;
 };
 
-namespace ShaderResourceFn
+namespace ShaderResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void online(StringId64 id, ResourceManager& resourceManager);
 	void offline(StringId64 id, ResourceManager& resourceManager);
 	void unload(Allocator& a, void* resource);
-} // namespace ShaderResourceFn
+} // namespace ShaderResourceInternalFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

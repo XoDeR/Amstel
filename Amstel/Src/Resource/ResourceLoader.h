@@ -4,8 +4,8 @@
 #include "Core/Base/Types.h"
 #include "Core/FileSystem/FileSystemTypes.h"
 #include "Core/Thread/Thread.h"
-#include "Core/Containers/ContainerTypes.h"
 #include "Core/Thread/Mutex.h"
+#include "Core/Containers/ContainerTypes.h"
 #include "Core/Strings/StringId.h"
 
 namespace Rio

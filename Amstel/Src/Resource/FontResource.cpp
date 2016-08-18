@@ -4,16 +4,16 @@
 #include "Core/Strings/StringUtils.h"
 #include "Core/Memory/Allocator.h"
 #include "Core/FileSystem/FileSystem.h"
-#include "Core/Containers/Map.h"
+#include "Core/Json/JsonObject.h"
 #include "Resource/ResourceTypes.h"
 #include "Resource/CompileOptions.h"
 
-#include <algorithm>
+#include <algorithm> // std::sort
 
 namespace Rio
 {
 
-namespace FontResourceFn
+namespace FontResourceInternalFn
 {
 	struct GlyphInfo
 	{
@@ -54,8 +54,8 @@ namespace FontResourceFn
 		JsonRFn::parseArray(object["glyphs"], glyphs);
 
 		const uint32_t textureSize = JsonRFn::parseInt(object["size"]);
-		const uint32_t fontSize    = JsonRFn::parseInt(object["fontSize"]);
-		const uint32_t glyphCount   = ArrayFn::getCount(glyphs);
+		const uint32_t fontSize = JsonRFn::parseInt(object["fontSize"]);
+		const uint32_t glyphCount = ArrayFn::getCount(glyphs);
 
 		Array<GlyphInfo> glyphInfoList(getDefaultAllocator());
 		ArrayFn::resize(glyphInfoList, glyphCount);
@@ -102,26 +102,29 @@ namespace FontResourceFn
 	{
 		allocator.deallocate(resource);
 	}
+} // namespace FontResourceInternalFn
 
-	const GlyphData* getGlyph(const FontResource* fontResource, CodePoint codePoint)
+namespace FontResourceFn
+{
+const GlyphData* getGlyph(const FontResource* fontResource, CodePoint codePoint)
+{
+	RIO_ASSERT(codePoint < fontResource->glyphCount, "Index out of bounds");
+
+	const CodePoint* codePointList = (CodePoint*)&fontResource[1];
+	const GlyphData* data = (GlyphData*)(codePointList + fontResource->glyphCount);
+
+	// TODO (could use binary search)
+	for (uint32_t i = 0; i < fontResource->glyphCount; ++i)
 	{
-		RIO_ASSERT(codePoint < fontResource->glyphCount, "Index out of bounds");
-
-		const CodePoint* codePointList = (CodePoint*)&fontResource[1];
-		const GlyphData* data = (GlyphData*)(codePointList + fontResource->glyphCount);
-
-		// TODO (could use binary search)
-		for (uint32_t i = 0; i < fontResource->glyphCount; ++i)
+		if (codePointList[i] == codePoint)
 		{
-			if (codePointList[i] == codePoint)
-			{
-				return &data[i];
-			}
+			return &data[i];
 		}
-
-		RIO_FATAL("Glyph not found");
-		return nullptr;
 	}
+
+	RIO_FATAL("Glyph not found");
+	return nullptr;
+}
 } // namespace FontResourceFn
 
 } // namespace Rio

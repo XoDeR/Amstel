@@ -6,6 +6,7 @@
 #include "Core/Containers/Map.h"
 #include "Core/Base/Os.h"
 #include "Core/Json/JsonR.h"
+#include "Core/Json/JsonObject.h"
 #include "Core/Strings/StringStream.h"
 #include "Core/Memory/TempAllocator.h"
 
@@ -39,7 +40,7 @@
 namespace Rio
 {
 
-namespace ShaderResourceFn
+namespace ShaderResourceInternalFn
 {
 	struct DepthFunction
 	{
@@ -453,13 +454,9 @@ namespace ShaderResourceFn
 		arguments << " --varyingdef " << varying;
 		arguments << " --type " << type;
 		arguments << " --platform " << platform;
-		arguments << " --profile ";
-		if (strcmp("linux", platform) == 0)
+		if (strcmp("windows", platform) == 0)
 		{
-			arguments << "120";
-		}
-		else if (strcmp("windows", platform) == 0)
-		{
+			arguments << " --profile ";
 			arguments << ((strcmp(type, "vertex") == 0) ? "vs_3_0" : "ps_3_0");
 		}
 
@@ -670,7 +667,7 @@ namespace ShaderResourceFn
 			JsonObject jsonObject(ta);
 			JsonRFn::parse(buffer, jsonObject);
 
-			if (MapFn::has(jsonObject, FixedString("include")))
+			if (JsonObjectFn::has(jsonObject, "include"))
 			{
 				JsonArray jsonArray(ta);
 				JsonRFn::parseArray(jsonObject["include"], jsonArray);
@@ -683,27 +680,27 @@ namespace ShaderResourceFn
 				}
 			}
 
-			if (MapFn::has(jsonObject, FixedString("renderStates")))
+			if (JsonObjectFn::has(jsonObject, "renderStates"))
 			{
 				parseRenderStates(jsonObject["renderStates"]);
 			}
 
-			if (MapFn::has(jsonObject, FixedString("samplerStates")))
+			if (JsonObjectFn::has(jsonObject, "samplerStates"))
 			{
 				parseSamplerStates(jsonObject["samplerStates"]);
 			}
 
-			if (MapFn::has(jsonObject, FixedString("bgfxShaders")))
+			if (JsonObjectFn::has(jsonObject, "bgfxShaders")))
 			{
 				parseBgfxShaders(jsonObject["bgfxShaders"]);
 			}
 
-			if (MapFn::has(jsonObject, FixedString("shaders")))
+			if (JsonObjectFn::has(jsonObject, "shaders"))
 			{
 				parseShaders(jsonObject["shaders"]);
 			}
 
-			if (MapFn::has(jsonObject, FixedString("staticCompile")))
+			if (JsonObjectFn::has(jsonObject, "staticCompile"))
 			{
 				parseStaticCompile(jsonObject["staticCompile"]);
 			}
@@ -715,25 +712,25 @@ namespace ShaderResourceFn
 			JsonObject renderStates(ta);
 			JsonRFn::parseObject(json, renderStates);
 
-			auto begin = MapFn::begin(renderStates);
-			auto end = MapFn::end(renderStates);
+			auto begin = JsonObjectFn::begin(renderStates);
+			auto end = JsonObjectFn::end(renderStates);
 			for (; begin != end; ++begin)
 			{
 				JsonObject jsonObject(ta);
 				JsonRFn::parseObject(begin->pair.second, jsonObject);
 
-				const bool rgbWriteEnable   = JsonRFn::parseBool(jsonObject["rgbWriteEnable"]);
+				const bool rgbWriteEnable = JsonRFn::parseBool(jsonObject["rgbWriteEnable"]);
 				const bool alphaWriteEnable = JsonRFn::parseBool(jsonObject["alphaWriteEnable"]);
 				const bool depthWriteEnable = JsonRFn::parseBool(jsonObject["depthWriteEnable"]);
 				const bool depthEnable = JsonRFn::parseBool(jsonObject["depthEnable"]);
 				const bool blendEnable = JsonRFn::parseBool(jsonObject["blendEnable"]);
 
-				const bool hasDepthFunction = MapFn::has(jsonObject, FixedString("depthFunction"));
-				const bool hasBlendSrc = MapFn::has(jsonObject, FixedString("blendSrc"));
-				const bool hasBlendDst = MapFn::has(jsonObject, FixedString("blendDst"));
-				const bool hasBlendEquation = MapFn::has(jsonObject, FixedString("blendEquation"));
-				const bool hasCullMode = MapFn::has(jsonObject, FixedString("cullMode"));
-				const bool hasPrimitiveType = MapFn::has(jsonObject, FixedString("primitiveType"));
+				const bool hasDepthFunction = JsonObjectFn::has(jsonObject, "depthFunction");
+				const bool hasBlendSrc = JsonObjectFn::has(jsonObject, "blendSrc");
+				const bool hasBlendDst = JsonObjectFn::has(jsonObject, "blendDst");
+				const bool hasBlendEquation = JsonObjectFn::has(jsonObject, "blendEquation");
+				const bool hasCullMode = JsonObjectFn::has(jsonObject, "cullMode");
+				const bool hasPrimitiveType = JsonObjectFn::has(jsonObject, "primitiveType");
 
 				RenderState renderState;
 				renderState.reset();
@@ -834,18 +831,18 @@ namespace ShaderResourceFn
 			JsonObject samplerStates(ta);
 			JsonRFn::parseObject(json, samplerStates);
 
-			auto begin = MapFn::begin(samplerStates);
-			auto end = MapFn::end(samplerStates);
+			auto begin = JsonObjectFn::begin(samplerStates);
+			auto end = JsonObjectFn::end(samplerStates);
 			for (; begin != end; ++begin)
 			{
 				JsonObject jsonObject(ta);
 				JsonRFn::parseObject(begin->pair.second, jsonObject);
 
-				const bool hasFilterMin = MapFn::has(jsonObject, FixedString("filterMin"));
-				const bool hasFilterMag = MapFn::has(jsonObject, FixedString("filterMag"));
-				const bool hasWrapU = MapFn::has(jsonObject, FixedString("wrapU"));
-				const bool hasWrapV = MapFn::has(jsonObject, FixedString("wrapV"));
-				const bool hasWrapW = MapFn::has(jsonObject, FixedString("wrapW"));
+				const bool hasFilterMin = JsonObjectFn::has(jsonObject, "filterMin");
+				const bool hasFilterMag = JsonObjectFn::has(jsonObject, "filterMag");
+				const bool hasWrapU = JsonObjectFn::has(jsonObject, "wrapU");
+				const bool hasWrapV = JsonObjectFn::has(jsonObject, "wrapV");
+				const bool hasWrapW = JsonObjectFn::has(jsonObject, "wrapW");
 
 				SamplerState samplerState;
 				samplerState.reset();
@@ -929,43 +926,43 @@ namespace ShaderResourceFn
 			JsonObject bgfxShaderList(ta);
 			JsonRFn::parseObject(json, bgfxShaderList);
 
-			auto begin = MapFn::begin(bgfxShaderList);
-			auto end = MapFn::end(bgfxShaderList);
+			auto begin = JsonObjectFn::begin(bgfxShaderList);
+			auto end = JsonObjectFn::end(bgfxShaderList);
 			for (; begin != end; ++begin)
 			{
 				JsonObject shader(ta);
 				JsonRFn::parseObject(begin->pair.second, shader);
 
 				BgfxShader bgfxShader(getDefaultAllocator());
-				if (MapFn::has(shader, FixedString("includes")))
+				if (JsonObjectFn::has(shader, "includes"))
 				{
 					JsonRFn::parseString(shader["includes"], bgfxShader.includes);
 				}
-				if (MapFn::has(shader, FixedString("code")))
+				if (JsonObjectFn::has(shader, "code"))
 				{
 					JsonRFn::parseString(shader["code"], bgfxShader.code);
 				}
-				if (MapFn::has(shader, FixedString("vertexShaderCode")))
+				if (JsonObjectFn::has(shader, "vertexShaderCode"))
 				{
 					JsonRFn::parseString(shader["vertexShaderCode"], bgfxShader.vertexShaderCode);
 				}
-				if (MapFn::has(shader, FixedString("fragmentShaderCode")))
+				if (JsonObjectFn::has(shader, "fragmentShaderCode"))
 				{
 					JsonRFn::parseString(shader["fragmentShaderCode"], bgfxShader.fragmentShaderCode);
 				}
-				if (MapFn::has(shader, FixedString("varying")))
+				if (JsonObjectFn::has(shader, "varying"))
 				{
 					JsonRFn::parseString(shader["varying"], bgfxShader.varying);
 				}
-				if (MapFn::has(shader, FixedString("vertexShaderInputOutput")))
+				if (JsonObjectFn::has(shader, "vertexShaderInputOutput"))
 				{
 					JsonRFn::parseString(shader["vertexShaderInputOutput"], bgfxShader.vertexShaderInputOutput);
 				}
-				if (MapFn::has(shader, FixedString("fragmentShaderInputOutput")))
+				if (JsonObjectFn::has(shader, "fragmentShaderInputOutput"))
 				{
 					JsonRFn::parseString(shader["fragmentShaderInputOutput"], bgfxShader.fragmentShaderInputOutput);
 				}
-				if (MapFn::has(shader, FixedString("samplers")))
+				if (JsonObjectFn::has(shader, "samplers"))
 				{
 					parseBgfxSamplers(shader["samplers"], bgfxShader);
 				}
@@ -988,8 +985,8 @@ namespace ShaderResourceFn
 			JsonObject bgfxSamplers(ta);
 			JsonRFn::parseObject(json, bgfxSamplers);
 
-			auto begin = MapFn::begin(bgfxSamplers);
-			auto end = MapFn::end(bgfxSamplers);
+			auto begin = JsonObjectFn::begin(bgfxSamplers);
+			auto end = JsonObjectFn::end(bgfxSamplers);
 			for (; begin != end; ++begin)
 			{
 				JsonObject sampler(ta);
@@ -1022,8 +1019,8 @@ namespace ShaderResourceFn
 			JsonObject shaders(ta);
 			JsonRFn::parseObject(json, shaders);
 
-			auto begin = MapFn::begin(shaders);
-			auto end = MapFn::end(shaders);
+			auto begin = JsonObjectFn::begin(shaders);
+			auto end = JsonObjectFn::end(shaders);
 			for (; begin != end; ++begin)
 			{
 				JsonObject jsonObject(ta);
@@ -1114,11 +1111,12 @@ namespace ShaderResourceFn
 			for (uint32_t i = 0; i < VectorFn::getCount(staticCompileList); ++i)
 			{
 				const StaticCompile& staticCompile = staticCompileList[i];
-				const char* shader = staticCompile.shaderName.getCStr();
+				const DynamicString& shader = staticCompile.shaderName;
 				const Vector<DynamicString>& defines = staticCompile.defines;
 
 				TempAllocator1024 ta;
-				DynamicString shaderNameStr(shader, ta);
+				DynamicString shaderNameStr(ta);
+				shaderNameStr = shader;
 				for (uint32_t i = 0; i < VectorFn::getCount(defines); ++i)
 				{
 					shaderNameStr += "+";
@@ -1129,34 +1127,37 @@ namespace ShaderResourceFn
 				RESOURCE_COMPILER_ASSERT(MapFn::has(shaderPermutationsMap, staticCompile.shaderName)
 					, compileOptions
 					, "Unknown shader: '%s'"
-					, shader
+					, shader.getCStr()
 					);
 				const ShaderPermutation& shaderPermutation = shaderPermutationsMap[shader];
-				const char* bgfxShader = shaderPermutation.bgfxShader.getCStr();
-				const char* renderStateName = shaderPermutation.renderState.getCStr();
+				const DynamicString& bgfxShader = shaderPermutation.bgfxShader;
+				const DynamicString& renderStateName = shaderPermutation.renderState;
 
 				RESOURCE_COMPILER_ASSERT(MapFn::has(bgfxShadersMap, shaderPermutation.bgfxShader)
 					, compileOptions
 					, "Unknown bgfx shader: '%s'"
-					, bgfxShader
+					, bgfxShader.getCStr()
 					);
 				RESOURCE_COMPILER_ASSERT(MapFn::has(renderStatesMap, shaderPermutation.renderState)
 					, compileOptions
 					, "Unknown render state: '%s'"
-					, renderStateName
+					, renderStateName.getCStr()
 					);
 
 				const RenderState& renderState = renderStatesMap[renderStateName];
 
 				compileOptions.write(shaderNameHash.id); // Shader name
 				compileOptions.write(renderState.encode()); // Render state
-				compile(bgfxShader, defines); // Shader code
+				compile(bgfxShader.getCStr(), defines); // Shader code
 			}
 		}
 
 		void compileSamplerStates(const char* bgfxShader)
 		{
-			const BgfxShader& shader = bgfxShadersMap[bgfxShader];
+			TempAllocator512 ta;
+			DynamicString key(ta);
+			key = bgfxShader;
+			const BgfxShader& shader = bgfxShadersMap[key];
 
 			compileOptions.write(MapFn::getCount(shader.samplersMap));
 
@@ -1166,7 +1167,7 @@ namespace ShaderResourceFn
 			{
 				const DynamicString& name = begin->pair.first;
 				const DynamicString& samplerStateName = begin->pair.second;
-				const SamplerState& samplerState = samplerStatesMap[samplerStateName.getCStr()];
+				const SamplerState& samplerState = samplerStatesMap[samplerStateName];
 
 				compileOptions.write(name.getStringId());
 				compileOptions.write(samplerState.encode());
@@ -1175,12 +1176,15 @@ namespace ShaderResourceFn
 
 		void compile(const char* bgfxShader, const Vector<DynamicString>& defines)
 		{
-			const BgfxShader& shader = bgfxShadersMap[bgfxShader];
+			TempAllocator512 taa;
+			DynamicString key(taa);
+			key = bgfxShader;
+			const BgfxShader& shader = bgfxShadersMap[key];
 
 			DynamicString includedCode(getDefaultAllocator());
 			if (!(shader.includes == ""))
 			{
-				const BgfxShader& included = bgfxShadersMap[shader.includes.getCStr()];
+				const BgfxShader& included = bgfxShadersMap[shader.includes];
 				includedCode = included.code;
 			}
 
@@ -1297,7 +1301,7 @@ namespace ShaderResourceFn
 	{
 		getDevice()->getShaderManager()->unload(a, resource);
 	}
-} // namespace ShaderResourceFn
+} // namespace ShaderResourceInternalFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

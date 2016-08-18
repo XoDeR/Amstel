@@ -29,11 +29,15 @@ struct LevelSound
 	char _pad[3];
 };
 
-namespace LevelResourceFn
+namespace LevelResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void unload(Allocator& allocator, void* resource);
+} // namespace LevelResourceInternalFn
+
+namespace LevelResourceFn
+{
 	const UnitResource* getUnitResource(const LevelResource* levelResource);
 	uint32_t getSoundCount(const LevelResource* levelResource);
 	const LevelSound* getSound(const LevelResource* levelResource, uint32_t i);

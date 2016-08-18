@@ -32,12 +32,15 @@ struct SoundResource
 	uint32_t soundType;
 };
 
-namespace SoundResourceFn
+namespace SoundResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void unload(Allocator& allocator, void* resource);
+} // namespace SoundResourceInternalFn
 
+namespace SoundResourceFn
+{
 	const char* getData(const SoundResource* soundResource);
 } // namespace SoundResourceFn
 

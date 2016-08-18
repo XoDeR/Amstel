@@ -1,11 +1,14 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/ScriptResource.h"
+
 #include "Config.h"
-#include "Core/Strings/DynamicString.h"
-#include "Core/Strings/StringStream.h"
+
 #include "Core/Base/Os.h"
 #include "Core/Memory/TempAllocator.h"
 #include "Core/Containers/Array.h"
+#include "Core/Strings/DynamicString.h"
+#include "Core/Strings/StringStream.h"
+
 #include "Resource/CompileOptions.h"
 
 #define LUAJIT_NAME "./luajit"
@@ -27,7 +30,7 @@
 namespace Rio
 {
 
-namespace ScriptResourceFn
+namespace ScriptResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
@@ -75,7 +78,10 @@ namespace ScriptResourceFn
 	{
 		allocator.deallocate(resource);
 	}
+} // namespace ScriptResourceInternalFn
 
+namespace ScriptResourceFn
+{
 	const char* getProgram(const ScriptResource* scriptResource)
 	{
 		return (char*)&scriptResource[1];
