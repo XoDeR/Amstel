@@ -2,17 +2,16 @@
 #include "Resource/MeshResource.h"
 
 #include "Core/Math/Aabb.h"
-#include "Core/Math/Vector2.h"
-#include "Core/Math/Vector3.h"
 #include "Core/Strings/DynamicString.h"
 #include "Core/FileSystem/FileSystem.h"
 #include "Core/Containers/Map.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/FileSystem/ReaderWriter.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
 #include "Core/Memory/TempAllocator.h"
 #include "Core/Containers/Vector.h"
+#include "Core/Math/Vector2.h"
+#include "Core/Math/Vector3.h"
 
 #include "Resource/CompileOptions.h"
 #include "Resource/ResourceManager.h"
@@ -22,7 +21,7 @@
 namespace Rio
 {
 
-namespace MeshResourceInternalFn
+namespace MeshResourceFn
 {
 	struct MeshCompiler
 	{
@@ -75,8 +74,8 @@ namespace MeshResourceInternalFn
 			JsonRFn::parse(geometry, jsonObject);
 			JsonRFn::parse(node, nodeJsonObject);
 
-			hasNormal = JsonObjectFn::has(jsonObject, "normal");
-			hasUv = JsonObjectFn::has(jsonObject, "texcoord");
+			hasNormal = MapFn::has(jsonObject, FixedString("normal"));
+			hasUv = MapFn::has(jsonObject, FixedString("texcoord"));
 
 			parseFloatArray(jsonObject["position"], positionList);
 
@@ -269,12 +268,12 @@ namespace MeshResourceInternalFn
 		JsonRFn::parse(jsonObject["nodes"], nodes);
 
 		compileOptions.write(RESOURCE_VERSION_MESH);
-		compileOptions.write(JsonObjectFn::getCount(geometries));
+		compileOptions.write(MapFn::getCount(geometries));
 
 		MeshCompiler meshCompiler(compileOptions);
 
-		auto begin = JsonObjectFn::begin(geometries);
-		auto end = JsonObjectFn::end(geometries);
+		auto begin = MapFn::begin(geometries);
+		auto end = MapFn::end(geometries);
 		for (; begin != end; ++begin)
 		{
 			const FixedString key = begin->pair.first;
@@ -397,7 +396,7 @@ namespace MeshResourceInternalFn
 		}
 		RIO_DELETE(a, (MeshResource*)resource);
 	}
-} // namespace MeshResourceInternalFn
+} // namespace MeshResourceFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

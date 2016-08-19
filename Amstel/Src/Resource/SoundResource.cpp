@@ -1,16 +1,15 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/SoundResource.h"
-
 #include "Core/Strings/DynamicString.h"
 #include "Core/FileSystem/FileSystem.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
+#include "Core/Containers/Map.h"
 #include "Resource/CompileOptions.h"
 
 namespace Rio
 {
 
-namespace SoundResourceInternalFn
+namespace SoundResourceFn
 {
 	struct WavHeader
 	{
@@ -20,7 +19,7 @@ namespace SoundResourceInternalFn
 		char formatList[4]; // Should contain formatList
 		int32_t formatSize; // Size of format chunk
 		int16_t formatTag; // Identifies way data is stored, 1 means no compression
-		int16_t formatChannels; // Channel, 1 -- mono, 2 -- stereo
+		int16_t formatChannels; // Channel, 1 means mono, 2 means stereo
 		int32_t formatSampleRate; // Samples per second
 		int32_t formatAverageBytesPerSample; // Average bytes per sample
 		int16_t formatBlockAlign; // Block alignment
@@ -80,10 +79,7 @@ namespace SoundResourceInternalFn
 	{
 		allocator.deallocate(resource);
 	}
-} // namespace SoundResourceInternalFn
 
-namespace SoundResourceFn
-{
 	const char* getData(const SoundResource* soundResource)
 	{
 		return (char*)&soundResource[1];

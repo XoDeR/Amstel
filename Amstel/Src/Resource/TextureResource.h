@@ -18,14 +18,14 @@ struct TextureResource
 	bgfx::TextureHandle handle;
 };
 
-namespace TextureResourceInternalFn
+namespace TextureResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void offline(StringId64 id, ResourceManager& resourceManager);
 	void online(StringId64 id, ResourceManager& resourceManager);
 	void unload(Allocator& a, void* resource);
-} // namespace TextureResourceInternalFn
+} // namespace TextureResourceFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

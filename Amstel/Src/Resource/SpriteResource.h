@@ -28,35 +28,45 @@ struct SpriteResource
 	bgfx::IndexBufferHandle indexBufferHandle;
 };
 
-namespace SpriteResourceInternalFn
+namespace SpriteResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void online(StringId64 id, ResourceManager& resourceManager);
 	void offline(StringId64 id, ResourceManager& resourceManager);
 	void unload(Allocator& a, void* resource);
-} // namespace SpriteResourceInternalFn
+} // namespace SpriteResourceFn
 
 struct SpriteAnimationResource
 {
 	uint32_t version;
+	uint32_t animationListCount;
 	uint32_t frameListCount;
-	float totalTime;
+	uint32_t framesOffset;
 };
 
-namespace SpriteAnimationResourceInternalFn
+struct SpriteAnimationName
+{
+	StringId32 id;
+};
+
+struct SpriteAnimationData
+{
+	uint32_t frameListCount;
+	uint32_t firstFrameIndex;
+	float time;
+};
+
+namespace SpriteAnimationResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void online(StringId64 id, ResourceManager& resourceManager);
 	void offline(StringId64 id, ResourceManager& resourceManager);
 	void unload(Allocator& a, void* resource);
-} // SpriteAnimationResourceInternalFn
-
-namespace SpriteAnimationResourceFn
-{
+	const SpriteAnimationData* getSpriteAnimationData(const SpriteAnimationResource* spriteAnimationResource, StringId32 name);
 	const uint32_t* getAnimationFrameList(const SpriteAnimationResource* spriteAnimationResource);
-} // SpriteAnimationResourceFn
+}
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

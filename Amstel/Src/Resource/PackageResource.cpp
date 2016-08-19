@@ -1,22 +1,19 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/PackageResource.h"
-
 #include "Core/Containers/Array.h"
-#include "Core/Containers/Map.h"
 #include "Core/FileSystem/File.h"
 #include "Core/FileSystem/FileSystem.h"
+#include "Core/Containers/Map.h"
 #include "Core/FileSystem/ReaderWriter.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
 #include "Core/Strings/StringId.h"
 #include "Core/Memory/TempAllocator.h"
-
 #include "Resource/CompileOptions.h"
 
 namespace Rio
 {
 
-namespace PackageResourceInternalFn
+namespace PackageResourceFn
 {
 	void compileResources(const char* type, const JsonArray& names, Array<PackageResource::Resource>& output, CompileOptions& compileOptions)
 	{
@@ -56,22 +53,22 @@ namespace PackageResourceInternalFn
 		JsonArray shader(ta);
 		JsonArray spriteAnimation(ta);
 
-		if (JsonObjectFn::has(object, "texture")) JsonRFn::parseArray(object["texture"], texture);
-		if (JsonObjectFn::has(object, "shader")) JsonRFn::parseArray(object["shader"], shader);
-		if (JsonObjectFn::has(object, "material")) JsonRFn::parseArray(object["material"], material);
+		if (MapFn::has(object, FixedString("texture"))) JsonRFn::parseArray(object["texture"], texture);
+		if (MapFn::has(object, FixedString("shader"))) JsonRFn::parseArray(object["shader"], shader);
+		if (MapFn::has(object, FixedString("material"))) JsonRFn::parseArray(object["material"], material);
 		
-		if (JsonObjectFn::has(object, "mesh")) JsonRFn::parseArray(object["mesh"], mesh);
-		if (JsonObjectFn::has(object, "unit")) JsonRFn::parseArray(object["unit"], unit);
-		if (JsonObjectFn::has(object, "sprite")) JsonRFn::parseArray(object["sprite"], sprite);
-		if (JsonObjectFn::has(object, "spriteAnimation")) JsonRFn::parseArray(object["spriteAnimation"], spriteAnimation);
+		if (MapFn::has(object, FixedString("mesh"))) JsonRFn::parseArray(object["mesh"], mesh);
+		if (MapFn::has(object, FixedString("unit"))) JsonRFn::parseArray(object["unit"], unit);
+		if (MapFn::has(object, FixedString("sprite"))) JsonRFn::parseArray(object["sprite"], sprite);
+		if (MapFn::has(object, FixedString("spriteAnimation"))) JsonRFn::parseArray(object["spriteAnimation"], spriteAnimation);
 		
-		if (JsonObjectFn::has(object, "font")) JsonRFn::parseArray(object["font"], font);
-		if (JsonObjectFn::has(object, "level")) JsonRFn::parseArray(object["level"], level);
-		if (JsonObjectFn::has(object, "physicsConfig")) JsonRFn::parseArray(object["physicsConfig"], physicsConfig);
+		if (MapFn::has(object, FixedString("font"))) JsonRFn::parseArray(object["font"], font);
+		if (MapFn::has(object, FixedString("level"))) JsonRFn::parseArray(object["level"], level);
+		if (MapFn::has(object, FixedString("physicsConfig"))) JsonRFn::parseArray(object["physicsConfig"], physicsConfig);
 		
-		if (JsonObjectFn::has(object, "sound")) JsonRFn::parseArray(object["sound"], sound);
+		if (MapFn::has(object, FixedString("sound"))) JsonRFn::parseArray(object["sound"], sound);
 
-		if (JsonObjectFn::has(object, "script")) JsonRFn::parseArray(object["script"], script);
+		if (MapFn::has(object, FixedString("script"))) JsonRFn::parseArray(object["script"], script);
 
 		Array<PackageResource::Resource> resources(getDefaultAllocator());
 
@@ -125,7 +122,7 @@ namespace PackageResourceInternalFn
 	{
 		RIO_DELETE(a, (PackageResource*)resource);
 	}
-} // namespace PackageResourceInternalFn
+} // namespace PackageResourceFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

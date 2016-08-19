@@ -1,34 +1,6 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #pragma once
 
-namespace Rio
-{
-	class ResourceLoader;
-	class ResourceManager;
-	struct ResourcePackage;
-
-	struct TextureResource;
-	struct ShaderResource;
-	struct MaterialResource;
-	struct MeshResource;
-
-	struct FontResource;
-	struct SpriteAnimationResource;
-	struct SpriteResource;
-
-	struct UnitResource;
-	struct LevelResource;
-	struct PackageResource;
-
-	struct SoundResource;
-
-	struct ScriptResource;
-
-	struct PhysicsConfigResource;
-	struct PhysicsResource;
-	struct ActorResource;
-} // namespace Rio
-
 #define RESOURCE_EXTENSION_CONFIG "config"
 #define RESOURCE_EXTENSION_FONT "font"
 #define RESOURCE_EXTENSION_LEVEL "level"
@@ -61,13 +33,13 @@ namespace Rio
 #define RESOURCE_TYPE_TEXTURE          StringId64(0xcd4238c6a0c69e32)
 #define RESOURCE_TYPE_UNIT             StringId64(0xe0a48d0be9a7453f)
 
-#define RESOURCE_VERSION_CONFIG uint32_t(1)
-#define RESOURCE_VERSION_FONT uint32_t(1)
-#define RESOURCE_VERSION_LEVEL uint32_t(1)
-#define RESOURCE_VERSION_MATERIAL uint32_t(1)
+#define RESOURCE_VERSION_CONFIG           uint32_t(1)
+#define RESOURCE_VERSION_FONT             uint32_t(1)
+#define RESOURCE_VERSION_LEVEL            uint32_t(1)
+#define RESOURCE_VERSION_MATERIAL         uint32_t(1)
 #define RESOURCE_VERSION_MESH             uint32_t(1)
 #define RESOURCE_VERSION_PACKAGE          uint32_t(1)
-#define RESOURCE_VERSION_PHYSICS_CONFIG uint32_t(1)
+#define RESOURCE_VERSION_PHYSICS_CONFIG   uint32_t(1)
 #define RESOURCE_VERSION_PHYSICS          uint32_t(1)
 #define RESOURCE_VERSION_SCRIPT           uint32_t(1)
 #define RESOURCE_VERSION_SHADER           uint32_t(1)
@@ -77,4 +49,33 @@ namespace Rio
 #define RESOURCE_VERSION_TEXTURE          uint32_t(1)
 #define RESOURCE_VERSION_UNIT             uint32_t(1)
 
+namespace Rio
+{
+
+class ResourceLoader;
+class ResourceManager;
+struct ResourcePackage;
+
+struct TextureResource;
+struct ShaderResource;
+struct MaterialResource;
+struct MeshResource;
+
+struct FontResource;
+struct SpriteAnimationResource;
+struct SpriteResource;
+
+struct UnitResource;
+struct LevelResource;
+struct PackageResource;
+
+struct SoundResource;
+
+struct ScriptResource;
+
+struct PhysicsConfigResource;
+struct PhysicsResource;
+struct ActorResource;
+
+} // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

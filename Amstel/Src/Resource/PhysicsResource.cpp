@@ -1,25 +1,21 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/PhysicsResource.h"
-
 #include "Core/Math/Aabb.h"
 #include "Core/Strings/DynamicString.h"
-#include "Core/Strings/StringUtils.h"
 #include "Core/FileSystem/FileSystem.h"
 #include "Core/Base/Macros.h"
 #include "Core/Containers/Map.h"
 #include "Core/Math/Quaternion.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
 #include "Core/Math/Sphere.h"
-
+#include "Core/Strings/StringUtils.h"
 #include "Resource/CompileOptions.h"
-
 #include "World/WorldTypes.h"
 
 namespace Rio
 {
 
-namespace PhysicsResourceInternalFn
+namespace PhysicsResourceFn
 {
 	struct ColliderInfo
 	{
@@ -164,20 +160,8 @@ namespace PhysicsResourceInternalFn
 		JsonObject node(ta);
 		JsonRFn::parse(file, meshJsonObject);
 		JsonRFn::parse(meshJsonObject["geometries"], geometries);
-		// TODO
-		RESOURCE_COMPILER_ASSERT(json_object::has(geometries, name.c_str())
-			, opts
-			, "Geometry '%s' does not exist"
-			, name.c_str()
-			);
 		JsonRFn::parse(geometries[name.getCStr()], geometry);
 		JsonRFn::parse(meshJsonObject["nodes"], nodes);
-		// TODO
-		RESOURCE_COMPILER_ASSERT(json_object::has(nodes, name.c_str())
-			, opts
-			, "Node '%s' does not exist"
-			, name.c_str()
-			);
 		JsonRFn::parse(nodes[name.getCStr()], node);
 
 		Matrix4x4 localMatrix = JsonRFn::parseMatrix4x4(node["localMatrix"]);
@@ -261,12 +245,12 @@ namespace PhysicsResourceInternalFn
 		actorResource.collisionFilter = JsonRFn::parseStringId(jsonObject["collisionFilter"]);
 
 		actorResource.flags = 0;
-		actorResource.flags |= JsonObjectFn::has(jsonObject, "lockTranslationX") ? JsonRFn::parseBool(jsonObject["lockTranslationX"]) : 0;
-		actorResource.flags |= JsonObjectFn::has(jsonObject, "lockTranslationY") ? JsonRFn::parseBool(jsonObject["lockTranslationY"]) : 0;
-		actorResource.flags |= JsonObjectFn::has(jsonObject, "lockTranslationZ") ? JsonRFn::parseBool(jsonObject["lockTranslationZ"]) : 0;
-		actorResource.flags |= JsonObjectFn::has(jsonObject, "lockRotationX") ? JsonRFn::parseBool(jsonObject["lockRotationX"]) : 0;
-		actorResource.flags |= JsonObjectFn::has(jsonObject, "lockRotationY") ? JsonRFn::parseBool(jsonObject["lockRotationY"]) : 0;
-		actorResource.flags |= JsonObjectFn::has(jsonObject, "lockRotationZ") ? JsonRFn::parseBool(jsonObject["lockRotationZ"]) : 0;
+		actorResource.flags |= MapFn::has(jsonObject, FixedString("lockTranslationX")) ? JsonRFn::parseBool(jsonObject["lockTranslationX"]) : 0;
+		actorResource.flags |= MapFn::has(jsonObject, FixedString("lockTranslationY")) ? JsonRFn::parseBool(jsonObject["lockTranslationY"]) : 0;
+		actorResource.flags |= MapFn::has(jsonObject, FixedString("lockTranslationZ")) ? JsonRFn::parseBool(jsonObject["lockTranslationZ"]) : 0;
+		actorResource.flags |= MapFn::has(jsonObject, FixedString("lockRotationX")) ? JsonRFn::parseBool(jsonObject["lockRotationX"]) : 0;
+		actorResource.flags |= MapFn::has(jsonObject, FixedString("lockRotationY")) ? JsonRFn::parseBool(jsonObject["lockRotationY"]) : 0;
+		actorResource.flags |= MapFn::has(jsonObject, FixedString("lockRotationZ")) ? JsonRFn::parseBool(jsonObject["lockRotationZ"]) : 0;
 
 		Buffer buffer(getDefaultAllocator());
 		ArrayFn::push(buffer, (char*)&actorResource, sizeof(actorResource));
@@ -312,9 +296,9 @@ namespace PhysicsResourceInternalFn
 		ArrayFn::push(buffer, (char*)&jointDesc, sizeof(jointDesc));
 		return buffer;
 	}
-} // namespace PhysicsResourceInternalFn
+} // namespace PhysicsResourceFn
 
-namespace PhysicsConfigResourceInternalFn
+namespace PhysicsConfigResourceFn
 {
 	void parseMaterials(const char* json, Array<PhysicsConfigMaterial>& objects)
 	{
@@ -322,8 +306,8 @@ namespace PhysicsConfigResourceInternalFn
 		JsonObject object(ta);
 		JsonRFn::parse(json, object);
 
-		auto begin = JsonObjectFn::begin(object);
-		auto end = JsonObjectFn::end(object);
+		auto begin = MapFn::begin(object);
+		auto end = MapFn::end(object);
 
 		for (; begin != end; ++begin)
 		{
@@ -349,8 +333,8 @@ namespace PhysicsConfigResourceInternalFn
 		JsonObject jsonObject(ta);
 		JsonRFn::parse(json, jsonObject);
 
-		auto begin = JsonObjectFn::begin(jsonObject);
-		auto end = JsonObjectFn::end(jsonObject);
+		auto begin = MapFn::begin(jsonObject);
+		auto end = MapFn::end(jsonObject);
 
 		for (; begin != end; ++begin)
 		{
@@ -374,8 +358,8 @@ namespace PhysicsConfigResourceInternalFn
 		JsonObject jsonObject(ta);
 		JsonRFn::parse(json, jsonObject);
 
-		auto begin = JsonObjectFn::begin(jsonObject);
-		auto end = JsonObjectFn::end(jsonObject);
+		auto begin = MapFn::begin(jsonObject);
+		auto end = MapFn::end(jsonObject);
 
 		for (; begin != end; ++begin)
 		{
@@ -390,9 +374,9 @@ namespace PhysicsConfigResourceInternalFn
 			// physicsConfigActor.linearDamping  = JsonRFn::parseFloat(actor["linearDamping"]);  // 0.0f;
 			// physicsConfigActor.angularDamping = JsonRFn::parseFloat(actor["angularDamping"]); // 0.05f;
 
-			const bool hasDynamic = JsonObjectFn::has(actor, "dynamic");
-			const bool hasKinematic = JsonObjectFn::has(actor, "kinematic");
-			const bool hasDisableGravity = JsonObjectFn::has(actor, "disableGravity");
+			const bool hasDynamic = MapFn::has(actor, FixedString("dynamic"));
+			const bool hasKinematic = MapFn::has(actor, FixedString("kinematic"));
+			const bool hasDisableGravity = MapFn::has(actor, FixedString("disableGravity"));
 
 			physicsConfigActor.flags = 0;
 
@@ -437,8 +421,8 @@ namespace PhysicsConfigResourceInternalFn
 			JsonObject jsonObject(ta);
 			JsonRFn::parse(json, jsonObject);
 
-			auto begin = JsonObjectFn::begin(jsonObject);
-			auto end = JsonObjectFn::end(jsonObject);
+			auto begin = MapFn::begin(jsonObject);
+			auto end = MapFn::end(jsonObject);
 			for (; begin != end; ++begin)
 			{
 				const FixedString key = begin->pair.first;
@@ -447,8 +431,8 @@ namespace PhysicsConfigResourceInternalFn
 				MapFn::set(filterMap, id, createNewFilterMask());
 			}
 
-			begin = JsonObjectFn::begin(jsonObject);
-			end = JsonObjectFn::end(jsonObject);
+			begin = MapFn::begin(jsonObject);
+			end = MapFn::end(jsonObject);
 			for (; begin != end; ++begin)
 			{
 				const FixedString key = begin->pair.first;
@@ -520,19 +504,19 @@ namespace PhysicsConfigResourceInternalFn
 		CollisionFilterCompiler collisionFilterCompiler(compileOptions);
 
 		// Parse materials
-		if (JsonObjectFn::has(object, "collisionFilters"))
+		if (MapFn::has(object, FixedString("collisionFilters")))
 		{
 			collisionFilterCompiler.parse(object["collisionFilters"]);
 		}
-		if (JsonObjectFn::has(object, "materials"))
+		if (MapFn::has(object, FixedString("materials")))
 		{
 			parseMaterials(object["materials"], materials);
 		}
-		if (JsonObjectFn::has(object, "shapes"))
+		if (MapFn::has(object, FixedString("shapes")))
 		{
 			parseShapes(object["shapes"], shapes);
 		}
-		if (JsonObjectFn::has(object, "actors"))
+		if (MapFn::has(object, FixedString("actors")))
 		{
 			parseActors(object["actors"], actors);
 		}
@@ -619,10 +603,6 @@ namespace PhysicsConfigResourceInternalFn
 		allocator.deallocate(resource);
 	}
 
-} // namespace PhysicsConfigResourceInternalFn
-
-namespace PhysicsConfigResourceFn
-{
 	const PhysicsConfigMaterial* getPhysicsConfigMaterial(const PhysicsConfigResource* physicsConfigResource, StringId32 name)
 	{
 		const PhysicsConfigMaterial* begin = (PhysicsConfigMaterial*)((const char*)physicsConfigResource + physicsConfigResource->materialsOffset);

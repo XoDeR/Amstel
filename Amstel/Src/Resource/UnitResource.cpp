@@ -9,7 +9,7 @@
 namespace Rio
 {
 
-namespace UnitResourceInternalFn
+namespace UnitResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
@@ -35,7 +35,7 @@ namespace UnitResourceInternalFn
 		a.deallocate(resource);
 	}
 
-} // namespace UnitResourceInternalFn
+} // namespace UnitResourceFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

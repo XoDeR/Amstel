@@ -1,29 +1,29 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/SpriteResource.h"
-
 #include "Config.h"
+#include "Core/Memory/Allocator.h"
+#include "Core/FileSystem/FileSystem.h"
 #include "Core/Strings/StringUtils.h"
 #include "Core/Containers/Array.h"
-#include "Core/FileSystem/FileSystem.h"
+#include "Core/Containers/Map.h"
 #include "Core/FileSystem/ReaderWriter.h"
 #include "Core/Math/Vector2.h"
 #include "Core/Math/Vector4.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
-
 #include "Resource/ResourceManager.h"
 #include "Resource/CompileOptions.h"
 
 namespace Rio
 {
 
-namespace SpriteResourceInternalFn
+namespace SpriteResourceFn
 {
 	struct SpriteFrame
 	{
 		StringId32 name;
-		Vector4 region;  // [x, y, w, h]
-		Vector2 pivot;  // [x, y]
+		Vector4 region;  // [x0, y0, x1, y1]
+		Vector2 scale;   // [Sx, Sy]
+		Vector2 offset;  // [Ox, Oy]
 	};
 
 	void parseFrame(const char* json, SpriteFrame& frame)
@@ -34,7 +34,8 @@ namespace SpriteResourceInternalFn
 
 		frame.name   = JsonRFn::parseStringId(jsonObject["name"]);
 		frame.region = JsonRFn::parseVector4(jsonObject["region"]);
-		frame.pivot = JsonRFn::parseVector2(jsonObject["pivot"]);
+		frame.offset = JsonRFn::parseVector2(jsonObject["offset"]);
+		frame.scale  = JsonRFn::parseVector2(jsonObject["scale"]);
 	}
 
 	void compile(const char* path, CompileOptions& compileOptions)
@@ -65,19 +66,18 @@ namespace SpriteResourceInternalFn
 
 			// Compute uv coords
 			const float u0 = spriteFrame.region.x / width;
-			const float v0 = (spriteFrame.region.y + spriteFrame.region.w) / height;
+			const float v0 = spriteFrame.region.y / height;
 			const float u1 = (spriteFrame.region.x + spriteFrame.region.z) / width;
-			const float v1 = spriteFrame.region.y / height;
+			const float v1 = (spriteFrame.region.y + spriteFrame.region.w) / height;
 
 			// Compute positions
-			float x0 = spriteFrame.region.x - spriteFrame.pivot.x;
-			float y0 = -(spriteFrame.region.y + spriteFrame.region.w - spriteFrame.pivot.y);
-			float x1 = spriteFrame.region.x + spriteFrame.region.z - spriteFrame.pivot.x;
-			float y1 = -(spriteFrame.region.y - spriteFrame.pivot.y);
-			x0 /= RIO_DEFAULT_PIXELS_PER_METER;
-			y0 /= RIO_DEFAULT_PIXELS_PER_METER;
-			x1 /= RIO_DEFAULT_PIXELS_PER_METER;
-			y1 /= RIO_DEFAULT_PIXELS_PER_METER;
+			const float w = spriteFrame.region.z / RIO_DEFAULT_PIXELS_PER_METER;
+			const float h = spriteFrame.region.w / RIO_DEFAULT_PIXELS_PER_METER;
+
+			const float x0 = spriteFrame.scale.x * (-w * 0.5f) + spriteFrame.offset.x;
+			const float y0 = spriteFrame.scale.y * (-h * 0.5f) + spriteFrame.offset.y;
+			const float x1 = spriteFrame.scale.x * ( w * 0.5f) + spriteFrame.offset.x;
+			const float y1 = spriteFrame.scale.y * ( h * 0.5f) + spriteFrame.offset.y;
 
 			ArrayFn::pushBack(vertices, x0); ArrayFn::pushBack(vertices, y0); // position
 			ArrayFn::pushBack(vertices, u0); ArrayFn::pushBack(vertices, v0); // uv
@@ -170,45 +170,88 @@ namespace SpriteResourceInternalFn
 	{
 		a.deallocate(resource);
 	}
-} // namespace SpriteResourceInternalFn
+} // namespace SpriteResourceFn
 
-namespace SpriteAnimationResourceInternalFn
+namespace SpriteAnimationResourceFn
 {
+	void parseAnimation(const char* json, Array<SpriteAnimationName>& spriteAnimationNameList, Array<SpriteAnimationData>& spriteAnimationDataList, Array<uint32_t>& frames)
+	{
+		TempAllocator512 ta;
+		JsonObject jsonObject(ta);
+		JsonRFn::parse(json, jsonObject);
+
+		SpriteAnimationName spriteAnimationName;
+		spriteAnimationName.id = JsonRFn::parseStringId(jsonObject["name"]);
+
+		JsonArray frameJsonObjectList(ta);
+		JsonRFn::parseArray(jsonObject["frames"], frameJsonObjectList);
+
+		const uint32_t frameListCount = ArrayFn::getCount(frameJsonObjectList);
+
+		SpriteAnimationData spriteAnimationData;
+		spriteAnimationData.frameListCount = frameListCount;
+		spriteAnimationData.firstFrameIndex = ArrayFn::getCount(frames);
+		spriteAnimationData.time = JsonRFn::parseFloat(jsonObject["time"]);
+
+		// Read frames
+		for (uint32_t frameIndex = 0; frameIndex < frameListCount; ++frameIndex)
+		{
+			ArrayFn::pushBack(frames, (uint32_t)JsonRFn::parseInt(frameJsonObjectList[frameIndex]));
+		}
+
+		ArrayFn::pushBack(spriteAnimationNameList, spriteAnimationName);
+		ArrayFn::pushBack(spriteAnimationDataList, spriteAnimationData);
+	}
+
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
 		Buffer buffer = compileOptions.read(path);
 
 		TempAllocator4096 ta;
 		JsonObject jsonObject(ta);
-		JsonArray objectFrames(ta);
-
-		Array<uint32_t> frames(getDefaultAllocator());
-		float totalTime = 0.0f;
-
 		JsonRFn::parse(buffer, jsonObject);
-		JsonRFn::parseArray(jsonObject["frames"], objectFrames);
 
-		ArrayFn::resize(frames, ArrayFn::getCount(objectFrames));
-		for (uint32_t i = 0; i < ArrayFn::getCount(objectFrames); ++i)
+		JsonArray animations(ta);
+		JsonRFn::parseArray(jsonObject["animations"], animations);
+
+		Array<SpriteAnimationName> spriteAnimationNameList(getDefaultAllocator());
+		Array<SpriteAnimationData> spriteAnimationDataList(getDefaultAllocator());
+		Array<uint32_t> spriteAnimationFrameIndexList(getDefaultAllocator());
+
+		const uint32_t animationListCount = ArrayFn::getCount(animations);
+		for (uint32_t i = 0; i < animationListCount; ++i)
 		{
-			frames[i] = (uint32_t)JsonRFn::parseFloat(objectFrames[i]);
+			parseAnimation(animations[i], spriteAnimationNameList, spriteAnimationDataList, spriteAnimationFrameIndexList);
 		}
 
-		totalTime = JsonRFn::parseFloat(jsonObject["totalTime"]);
-
-		// Write
 		SpriteAnimationResource spriteAnimationResource;
 		spriteAnimationResource.version = RESOURCE_VERSION_SPRITE_ANIMATION;
-		spriteAnimationResource.frameListCount = ArrayFn::getCount(frames);
-		spriteAnimationResource.totalTime = totalTime;
+		spriteAnimationResource.animationListCount = ArrayFn::getCount(spriteAnimationNameList);
+		spriteAnimationResource.frameListCount = ArrayFn::getCount(spriteAnimationFrameIndexList);
+		spriteAnimationResource.framesOffset = uint32_t(sizeof(SpriteAnimationResource) +
+					sizeof(SpriteAnimationName) * ArrayFn::getCount(spriteAnimationNameList) +
+					sizeof(SpriteAnimationData) * ArrayFn::getCount(spriteAnimationDataList));
 
 		compileOptions.write(spriteAnimationResource.version);
+		compileOptions.write(spriteAnimationResource.animationListCount);
 		compileOptions.write(spriteAnimationResource.frameListCount);
-		compileOptions.write(spriteAnimationResource.totalTime);
+		compileOptions.write(spriteAnimationResource.framesOffset);
 
-		for (uint32_t i = 0; i < ArrayFn::getCount(frames); ++i)
+		for (uint32_t i = 0; i < ArrayFn::getCount(spriteAnimationNameList); i++)
 		{
-			compileOptions.write(frames[i]);
+			compileOptions.write(spriteAnimationNameList[i].id);
+		}
+
+		for (uint32_t i = 0; i < ArrayFn::getCount(spriteAnimationDataList); i++)
+		{
+			compileOptions.write(spriteAnimationDataList[i].frameListCount);
+			compileOptions.write(spriteAnimationDataList[i].firstFrameIndex);
+			compileOptions.write(spriteAnimationDataList[i].time);
+		}
+
+		for (uint32_t i = 0; i < ArrayFn::getCount(spriteAnimationFrameIndexList); i++)
+		{
+			compileOptions.write(spriteAnimationFrameIndexList[i]);
 		}
 	}
 
@@ -225,13 +268,27 @@ namespace SpriteAnimationResourceInternalFn
 	{
 		a.deallocate(resource);
 	}
-} // namespace SpriteAnimationResourceInternalFn
 
-namespace SpriteAnimationResourceFn
-{
+	const SpriteAnimationData* getSpriteAnimationData(const SpriteAnimationResource* spriteAnimationResource, StringId32 name)
+	{
+		const uint32_t animationListCount = spriteAnimationResource->animationListCount;
+		const SpriteAnimationName* begin = (SpriteAnimationName*) ((char*)spriteAnimationResource + sizeof(*spriteAnimationResource));
+		const SpriteAnimationData* data = (SpriteAnimationData*) ((char*)spriteAnimationResource + sizeof(*spriteAnimationResource) + sizeof(SpriteAnimationName) * animationListCount);
+
+		for (uint32_t i = 0; i < animationListCount; i++)
+		{
+			if (begin[i].id == name)
+			{
+				return &data[i];
+			}
+		}
+
+		return nullptr;
+	}
+
 	const uint32_t* getAnimationFrameList(const SpriteAnimationResource* spriteAnimationResource)
 	{
-		return (uint32_t*)&spriteAnimationResource[1];
+		return (uint32_t*) ((char*)spriteAnimationResource + spriteAnimationResource->framesOffset);
 	}
 } // namespace SpriteAnimationResourceFn
 

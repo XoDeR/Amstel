@@ -5,11 +5,10 @@
 #include "Core/FileSystem/FileSystem.h"
 #include "Core/Base/Macros.h"
 #include "Core/Containers/Map.h"
-#include "Core/Containers/Vector.h"
 #include "Core/FileSystem/ReaderWriter.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
 #include "Core/Strings/StringUtils.h"
+#include "Core/Containers/Vector.h"
 
 #include "Device/Device.h"
 
@@ -21,7 +20,7 @@
 namespace Rio
 {
 
-namespace MaterialResourceInternalFn
+namespace MaterialResourceFn
 {
 	struct UniformTypeInfo
 	{
@@ -70,7 +69,7 @@ namespace MaterialResourceInternalFn
 	static uint32_t reserveDynamicData(T data, Array<char>& dynamic)
 	{
 		uint32_t offset = ArrayFn::getCount(dynamic);
-		ArrayFn::push(dynamic, (char*)&data, sizeof(data));
+		ArrayFn::push(dynamic, (char*) &data, sizeof(data));
 		return offset;
 	}
 
@@ -80,8 +79,8 @@ namespace MaterialResourceInternalFn
 		JsonObject object(ta);
 		JsonRFn::parse(json, object);
 
-		auto begin = JsonObjectFn::begin(object);
-		auto end = JsonObjectFn::end(object);
+		auto begin = MapFn::begin(object);
+		auto end = MapFn::end(object);
 
 		for (; begin != end; ++begin)
 		{
@@ -115,13 +114,13 @@ namespace MaterialResourceInternalFn
 		JsonObject object(ta);
 		JsonRFn::parse(json, object);
 
-		auto begin = JsonObjectFn::begin(object);
-		auto end = JsonObjectFn::end(object);
+		auto begin = MapFn::begin(object);
+		auto end = MapFn::end(object);
 
 		for (; begin != end; ++begin)
 		{
 			const FixedString key = begin->pair.first;
-			const char* value = begin->pair.second;
+			const char* value     = begin->pair.second;
 
 			UniformHandle uniformHandle;
 			uniformHandle.uniformHandle = 0;
@@ -151,35 +150,31 @@ namespace MaterialResourceInternalFn
 
 			switch (uniformData.type)
 			{
-			case UniformType::FLOAT:
-			{
-				float data = JsonRFn::parseFloat(uniform["value"]);
-				reserveDynamicData(data, dynamic);
-			}
-			break;
-			case UniformType::VECTOR2:
-			{
-				Vector2 data = JsonRFn::parseVector2(uniform["value"]);
-				reserveDynamicData(data, dynamic);
-			}
-			break;
-			case UniformType::VECTOR3:
-			{
-				Vector3 data = JsonRFn::parseVector3(uniform["value"]);
-				reserveDynamicData(data, dynamic);
-			}
-			break;
-			case UniformType::VECTOR4:
-			{
-				Vector4 data = JsonRFn::parseVector4(uniform["value"]);
-				reserveDynamicData(data, dynamic);
-			}
-			break;
-			default: 
-			{
-				RIO_FATAL("Unknown uniform type");
-			}
-			break;
+				case UniformType::FLOAT:
+				{
+					float data = JsonRFn::parseFloat(uniform["value"]);
+					reserveDynamicData(data, dynamic);
+					break;
+				}
+				case UniformType::VECTOR2:
+				{
+					Vector2 data = JsonRFn::parseVector2(uniform["value"]);
+					reserveDynamicData(data, dynamic);
+					break;
+				}
+				case UniformType::VECTOR3:
+				{
+					Vector3 data = JsonRFn::parseVector3(uniform["value"]);
+					reserveDynamicData(data, dynamic);
+					break;
+				}
+				case UniformType::VECTOR4:
+				{
+					Vector4 data = JsonRFn::parseVector4(uniform["value"]);
+					reserveDynamicData(data, dynamic);
+					break;
+				}
+				default: RIO_FATAL("Oops"); break;
 			}
 
 			ArrayFn::pushBack(uniforms, uniformData);
@@ -211,7 +206,7 @@ namespace MaterialResourceInternalFn
 		materialResource.textureDataOffset = sizeof(materialResource);
 		materialResource.uniformListCount = ArrayFn::getCount(uniformDataList);
 		materialResource.uniformDataOffset = materialResource.textureDataOffset + sizeof(TextureData)*ArrayFn::getCount(textureDataList);
-		materialResource.dynamicDataSize = ArrayFn::getCount(dynamicBlob);
+		materialResource.dynamicDataSize   = ArrayFn::getCount(dynamicBlob);
 		materialResource.dynamicDataOffset = materialResource.uniformDataOffset + sizeof(UniformData)*ArrayFn::getCount(uniformDataList);
 
 		// Write
@@ -265,10 +260,6 @@ namespace MaterialResourceInternalFn
 		getDevice()->getMaterialManager()->unload(a, resource);
 	}
 
-} // namespace MaterialResourceInternalFn
-
-namespace MaterialResourceFn
-{
 	UniformData* getUniformData(const MaterialResource* materialResource, uint32_t i)
 	{
 		UniformData* base = (UniformData*) ((char*)materialResource + materialResource->uniformDataOffset);

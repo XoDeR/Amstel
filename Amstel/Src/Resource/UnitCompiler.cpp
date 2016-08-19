@@ -1,19 +1,15 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/UnitCompiler.h"
-
 #include "Core/Containers/Array.h"
 #include "Core/Containers/SortMap.h"
 #include "Core/Base/Macros.h"
 #include "Core/Containers/Map.h"
 #include "Core/Math/MathUtils.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
 #include "Core/Memory/TempAllocator.h"
-
 #include "Resource/CompileOptions.h"
 #include "Resource/UnitResource.h"
 #include "Resource/PhysicsResource.h"
-
 #include "World/WorldTypes.h"
 
 namespace Rio
@@ -142,12 +138,12 @@ static Buffer compileSpriteRenderer(const char* json, CompileOptions& compileOpt
 	JsonObject jsonObject(ta);
 	JsonRFn::parse(json, jsonObject);
 
-	DynamicString spriteResource(ta);
-	JsonRFn::parseString(jsonObject["spriteResource"], spriteResource);
-	RESOURCE_COMPILER_ASSERT_RESOURCE_EXISTS(RESOURCE_EXTENSION_SPRITE, spriteResource.getCStr(), compileOptions);
+	DynamicString resource(ta);
+	JsonRFn::parseString(jsonObject["resource"], resource);
+	RESOURCE_COMPILER_ASSERT_RESOURCE_EXISTS(RESOURCE_EXTENSION_SPRITE, resource.getCStr(), compileOptions);
 
 	SpriteRendererDesc spriteRendererDesc;
-	spriteRendererDesc.spriteResourceName = JsonRFn::parseResourceId(jsonObject["spriteResource"]);
+	spriteRendererDesc.spriteResourceName = JsonRFn::parseResourceId(jsonObject["resource"]);
 	spriteRendererDesc.materialResource = JsonRFn::parseResourceId(jsonObject["material"]);
 	spriteRendererDesc.visible = JsonRFn::parseBool(jsonObject["visible"]);
 
@@ -194,10 +190,10 @@ UnitCompiler::UnitCompiler(CompileOptions& compileOptions)
 	registerComponentCompiler("meshRenderer", &compileMeshRenderer, 1.0f);
 	registerComponentCompiler("spriteRenderer", &compileSpriteRenderer, 1.0f);
 	registerComponentCompiler("light", &compileLight, 1.0f);
-	registerComponentCompiler("controller", &PhysicsResourceInternalFn::compileController, 1.0f);
-	registerComponentCompiler("collider", &PhysicsResourceInternalFn::compileCollider, 1.0f);
-	registerComponentCompiler("actor", &PhysicsResourceInternalFn::compileActor, 2.0f);
-	registerComponentCompiler("joint", &PhysicsResourceInternalFn::compileJoint, 3.0f);
+	registerComponentCompiler("controller", &PhysicsResourceFn::compileController, 1.0f);
+	registerComponentCompiler("collider", &PhysicsResourceFn::compileCollider, 1.0f);
+	registerComponentCompiler("actor", &PhysicsResourceFn::compileActor, 2.0f);
+	registerComponentCompiler("joint", &PhysicsResourceFn::compileJoint, 3.0f);
 }
 
 Buffer UnitCompiler::readUnit(const char* path)
@@ -227,7 +223,7 @@ void UnitCompiler::compileUnitFromJson(const char* json)
 	{
 		const JsonObject& prefab = prefabs[i];
 
-		if (!JsonObjectFn::has(prefab, "prefab"))
+		if (!MapFn::has(prefab, FixedString("prefab")))
 		{
 			break;
 		}
@@ -255,7 +251,7 @@ void UnitCompiler::compileUnitFromJson(const char* json)
 		{
 			const JsonObject& prefab = prefabs[prefabsCount - i - 1];
 
-			if (!JsonObjectFn::has(prefab, "modifiedComponentList"))
+			if (!MapFn::has(prefab, FixedString("modifiedComponentList")))
 			{
 				continue;
 			}
@@ -263,8 +259,8 @@ void UnitCompiler::compileUnitFromJson(const char* json)
 			JsonObject modifiedComponentList(ta);
 			JsonRFn::parse(prefab["modifiedComponentList"], modifiedComponentList);
 
-			auto begin = JsonObjectFn::begin(modifiedComponentList);
-			auto end = JsonObjectFn::end(modifiedComponentList);
+			auto begin = MapFn::begin(modifiedComponentList);
+			auto end = MapFn::end(modifiedComponentList);
 			for (; begin != end; ++begin)
 			{
 				const FixedString key = begin->pair.first;
@@ -272,16 +268,16 @@ void UnitCompiler::compileUnitFromJson(const char* json)
 				const char* value = begin->pair.second;
 
 				// TODO
-				MapFn::remove(prefabRootComponentList.map, id);
-				MapFn::set(prefabRootComponentList.map, id, value);
+				MapFn::remove(prefabRootComponentList, id);
+				MapFn::set(prefabRootComponentList, id, value);
 			}
 		}
 	}
 
-	if (JsonObjectFn::getCount(prefabRootComponentList) > 0)
+	if (MapFn::getCount(prefabRootComponentList) > 0)
 	{
-		auto begin = JsonObjectFn::begin(prefabRootComponentList);
-		auto end = JsonObjectFn::end(prefabRootComponentList);
+		auto begin = MapFn::begin(prefabRootComponentList);
+		auto end = MapFn::end(prefabRootComponentList);
 		for (; begin != end; ++begin)
 		{
 			const char* value = begin->pair.second;
@@ -306,8 +302,8 @@ void UnitCompiler::compileMultipleUnits(const char* json)
 	JsonObject jsonObject(ta);
 	JsonRFn::parse(json, jsonObject);
 
-	auto begin = JsonObjectFn::begin(jsonObject);
-	auto end = JsonObjectFn::end(jsonObject);
+	auto begin = MapFn::begin(jsonObject);
+	auto end = MapFn::end(jsonObject);
 
 	for (; begin != end; ++begin)
 	{

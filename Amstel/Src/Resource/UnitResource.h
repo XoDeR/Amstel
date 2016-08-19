@@ -5,6 +5,7 @@
 #include "Core/FileSystem/FileSystemTypes.h"
 #include "Core/Strings/StringId.h"
 #include "Resource/CompilerTypes.h"
+#include <cstdint> // uint32_t
 
 namespace Rio
 {
@@ -27,12 +28,12 @@ struct ComponentData
 //	char data[size]
 };
 
-namespace UnitResourceInternalFn
+namespace UnitResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void unload(Allocator& allocator, void* resource);
-} // namespace UnitResourceInternalFn
+} // namespace UnitResourceFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

@@ -2,16 +2,16 @@
 #include "Resource/LevelResource.h"
 #include "Core/Containers/Array.h"
 #include "Core/FileSystem/FileSystem.h"
+#include "Core/Containers/Map.h"
 #include "Core/Memory/Memory.h"
 #include "Core/Json/JsonR.h"
-#include "Core/Json/JsonObject.h"
 #include "Resource/CompileOptions.h"
 #include "Resource/UnitCompiler.h"
 
 namespace Rio
 {
 
-namespace LevelResourceInternalFn
+namespace LevelResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
@@ -25,8 +25,8 @@ namespace LevelResourceInternalFn
 			JsonObject soundsJson(ta);
 			JsonRFn::parseObject(jsonObject["sounds"], soundsJson);
 
-			auto begin = JsonObjectFn::begin(soundsJson);
-			auto end = JsonObjectFn::end(soundsJson);
+			auto begin = MapFn::begin(soundsJson);
+			auto end = MapFn::end(soundsJson);
 			for (; begin != end; ++begin)
 			{
 				JsonObject sound(ta);
@@ -51,7 +51,7 @@ namespace LevelResourceInternalFn
 		LevelResource levelResource;
 		levelResource.version = RESOURCE_VERSION_LEVEL;
 		levelResource.soundCount = ArrayFn::getCount(sounds);
-		levelResource.unitsOffset = sizeof(LevelResource);
+		levelResource.unitsOffset  = sizeof(LevelResource);
 		levelResource.soundsOffset = levelResource.unitsOffset + ArrayFn::getCount(unitBlob);
 
 		compileOptions.write(levelResource.version);
@@ -87,10 +87,7 @@ namespace LevelResourceInternalFn
 	{
 		allocator.deallocate(resource);
 	}
-} // namespace LevelResourceInternalFn
-		
-namespace LevelResourceFn
-{
+
 	const UnitResource* getUnitResource(const LevelResource* levelResource)
 	{
 		return (const UnitResource*)((char*)levelResource + levelResource->unitsOffset);

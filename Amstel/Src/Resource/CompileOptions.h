@@ -4,13 +4,12 @@
 #include "Core/Containers/Array.h"
 #include "Core/Strings/DynamicString.h"
 #include "Core/FileSystem/File.h"
-#include "Core/FileSystem/Path.h"
 #include "Core/FileSystem/FileSystem.h"
 #include "Core/Base/Guid.h"
+#include "Core/FileSystem/Path.h"
 #include "Core/Memory/TempAllocator.h"
 #include "Core/Containers/Vector.h"
 #include "Device/Log.h"
-#include "Resource/DataCompiler.h"
 
 #include <setjmp.h> // jmp_buf
 
@@ -29,8 +28,8 @@ namespace Rio
 class CompileOptions
 {
 public:
-	CompileOptions(DataCompiler& dataCompiler, FileSystem& bundleFileSystem, Buffer& outputBuffer, const char* platformName, jmp_buf* jmpBuf)
-		: dataCompiler(dataCompiler)
+	CompileOptions(FileSystem& sourceFileSystem, FileSystem& bundleFileSystem, Buffer& outputBuffer, const char* platformName, jmp_buf* jmpBuf)
+		: sourceFileSystem(sourceFileSystem)
 		, bundleFileSystem(bundleFileSystem)
 		, outputBuffer(outputBuffer)
 		, platformName(platformName)
@@ -55,21 +54,13 @@ public:
 
 	bool doesFileExist(const char* path)
 	{
-		TempAllocator256 ta;
-		DynamicString sourceDirectory(ta);
-		FileSystemDisk fileSystemDisk(ta);
-
-		dataCompiler.source_dir(path, sourceDirectory);
-		fileSystemDisk.setPrefix(sourceDirectory.getCStr());
-
-		return fileSystemDisk.getDoesExist(path);
+		return sourceFileSystem.getDoesExist(path);
 	}
 
 	bool doesResourceExist(const char* type, const char* name)
 	{
 		TempAllocator1024 ta;
-		DynamicString path(ta);
-		path += name;
+		DynamicString path(name, ta);
 		path += ".";
 		path += type;
 		return doesFileExist(path.getCStr());
@@ -88,9 +79,9 @@ public:
 
 	void writeTemporary(const char* path, const char* data, uint32_t size)
 	{
-		File* file = bundleFileSystem.open(path, FileOpenMode::WRITE);
+		File* file = sourceFileSystem.open(path, FileOpenMode::WRITE);
 		file->write(data, size);
-		bundleFileSystem.close(*file);
+		sourceFileSystem.close(*file);
 	}
 
 	void writeTemporary(const char* path, const Buffer& data)
@@ -101,13 +92,6 @@ public:
 	Buffer read(const char* path)
 	{
 		addDependency(path);
-
-		TempAllocator256 ta;
-		DynamicString source_dir(ta);
-		FileSystemDisk sourceFileSystem(ta);
-
-		_data_compiler.source_dir(path, source_dir);
-		sourceFileSystem.setPrefix(source_dir.c_str());
 
 		File* file = sourceFileSystem.open(path, FileOpenMode::READ);
 		uint32_t size = file->getSize();
@@ -120,13 +104,6 @@ public:
 
 	void getAbsolutePath(const char* path, DynamicString& abs)
 	{
-		TempAllocator256 ta;
-		DynamicString source_dir(ta);
-		FileSystemDisk sourceFileSystem(ta);
-
-		_data_compiler.source_dir(path, source_dir);
-		sourceFileSystem.set_prefix(source_dir.c_str());
-
 		sourceFileSystem.getAbsolutePath(path, abs);
 	}
 
@@ -178,13 +155,12 @@ public:
 	void addDependency(const char* path)
 	{
 		TempAllocator256 ta;
-		DynamicString dependency(ta);
-		dependency += path;
+		DynamicString dependency(path, ta);
 		VectorFn::pushBack(dependencyList, dependency);
 	}
 
 private:
-	DataCompiler& dataCompiler;
+	FileSystem& sourceFileSystem;
 	FileSystem& bundleFileSystem;
 	Buffer& outputBuffer;
 	const char* platformName;

@@ -44,12 +44,12 @@ struct PackageResource
 	Array<Resource> resources;
 };
 
-namespace PackageResourceInternalFn
+namespace PackageResourceFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void unload(Allocator& allocator, void* resource);
-} // namespace PackageResourceInternalFn
+} // namespace PackageResourceFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka
