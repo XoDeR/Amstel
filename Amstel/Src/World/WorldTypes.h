@@ -18,11 +18,19 @@ class SoundWorld;
 class UnitManager;
 class World;
 struct DebugLine;
-struct Gui;
+struct DebugGui;
 struct Material;
 struct SceneGraph;
 
 using SoundInstanceId = uint32_t;
+
+const uint32_t DEBUG_LINE_MARKER = 0x00000001;
+const uint32_t DEBUG_GUI_MARKER = 0x00000002;
+const uint32_t LEVEL_MARKER = 0x000000003;
+const uint32_t RENDER_WORLD_MARKER = 0x000000004;
+const uint32_t RESOURCE_PACKAGE_MARKER = 0x00000005;
+const uint32_t SCENE_GRAPH_MARKER = 0x00000006;
+const uint32_t WORLD_MARKER = 0x00000007;
 
 const StringId32 COMPONENT_TYPE_TRANSFORM = StringId32("transform");
 const StringId32 COMPONENT_TYPE_CAMERA = StringId32("camera");

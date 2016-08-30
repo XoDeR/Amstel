@@ -7,11 +7,10 @@
 #include "Core/Strings/StringTypes.h"
 #include "Core/Base/Types.h"
 
-#include <stdio.h>  // fputs
-
 #if RIO_PLATFORM_POSIX
 	#include <dlfcn.h> // dlopen, dlclose, dlsym
 	#include <errno.h>
+	#include <stdio.h>  // fputs
 	#include <string.h> // memset
 	#include <sys/stat.h> // lstat, mknod, mkdir
 	#include <sys/wait.h> // wait
@@ -20,6 +19,7 @@
  	#include <stdlib.h> // exit
 #elif RIO_PLATFORM_WINDOWS
 	#include <io.h>
+	#include <stdio.h>
 	#include "Device/Windows/Headers_Windows.h"
 #endif // RIO_PLATFORM_
 #if RIO_PLATFORM_ANDROID
@@ -70,7 +70,7 @@ namespace OsFn
 #endif // RIO_PLATFORM_
 	}
 
-	inline void* openLibrary(const char* path)
+	inline void* libraryOpen(const char* path)
 	{
 #if RIO_PLATFORM_POSIX
 		return ::dlopen(path, RTLD_LAZY);
@@ -79,7 +79,7 @@ namespace OsFn
 #endif // RIO_PLATFORM_
 	}
 
-	inline void closeLibrary(void* library)
+	inline void libraryClose(void* library)
 	{
 #if RIO_PLATFORM_POSIX
 		dlclose(library);
@@ -88,7 +88,7 @@ namespace OsFn
 #endif // RIO_PLATFORM_
 	}
 
-	inline void* lookupSymbol(void* library, const char* name)
+	inline void* libraryLookupSymbol(void* library, const char* name)
 	{
 #if RIO_PLATFORM_POSIX
 		return ::dlsym(library, name);

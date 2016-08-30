@@ -7,14 +7,14 @@
 #include "Core/Thread/Thread.h"
 #include "Device/Device.h"
 #include "Device/Display.h"
-#include "Device/OsEventQueue.h"
+#include "Device/DeviceEventQueue.h"
 #include "Device/Windows/Headers_Windows.h"
 
 #include "Core/UnitTests.cpp"
 
 #include <bgfx/bgfxplatform.h>
 
-#include <windowsx.h>
+#include <WindowsX.h>
 #include <Xinput.h>
 #pragma comment(lib, "Xinput.lib")
 
@@ -151,7 +151,7 @@ struct Joypad
 		memset(&isConnectedList, 0, sizeof(isConnectedList));
 	}
 
-	void update(OsEventQueue& queue)
+	void update(DeviceEventQueue& queue)
 	{
 		for (uint8_t i = 0; i < RIO_MAX_JOYPADS; ++i)
 		{
@@ -163,7 +163,7 @@ struct Joypad
 
 			if (connected != isConnectedList[i])
 			{
-				queue.pushJoypadEvent(i, connected);
+				queue.pushStatusEvent(InputDeviceType::JOYPAD, i, connected);
 			}
 
 			isConnectedList[i] = connected;
@@ -184,7 +184,10 @@ struct Joypad
 					WORD bit = xInputToJoypadTable[bb].bit;
 					if (bit & diff)
 					{
-						queue.pushJoypadEvent(i, xInputToJoypadTable[bb].button, (current & bit) != 0);
+						queue.pushButtonEvent(InputDeviceType::JOYPAD
+							, i
+							, xInputToJoypadTable[bb].button
+							, (current & bit) != 0);
 						gamepad.wButtons = current;
 					}
 				}
@@ -200,7 +203,13 @@ struct Joypad
 					? float(value + (value < 0 ? XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE : -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)) / float(INT16_MAX - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
 					: 0.0f
 					;
-				queue.pushJoypadEvent(i, JoypadAxis::LEFT, axisDataList[0].lx, axisDataList[0].ly, axisDataList[0].lz);
+				queue.pushAxisEvent(InputDeviceType::JOYPAD
+					, i
+					, JoypadAxis::LEFT
+					, axisDataList[0].lx
+					, axisDataList[0].ly
+					, axisDataList[0].lz
+					);
 
 				gamepad.sThumbLX = state.Gamepad.sThumbLX;
 			}
@@ -214,7 +223,13 @@ struct Joypad
 					? float(value + (value < 0 ? XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE : -XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)) / float(INT16_MAX - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE)
 					: 0.0f
 					;
-				queue.pushJoypadEvent(i, JoypadAxis::LEFT, axisDataList[0].lx, axisDataList[0].ly, axisDataList[0].lz);
+				queue.pushAxisEvent(InputDeviceType::JOYPAD
+					, i 
+					, JoypadAxis::LEFT
+					, axisDataList[0].lx
+					, axisDataList[0].ly
+					, axisDataList[0].lz
+					);
 
 				gamepad.sThumbLY = state.Gamepad.sThumbLY;
 			}
@@ -227,7 +242,13 @@ struct Joypad
 					? float(value + (value < 0 ? XINPUT_GAMEPAD_TRIGGER_THRESHOLD : -XINPUT_GAMEPAD_TRIGGER_THRESHOLD)) / float(UINT8_MAX - XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
 					: 0.0f
 					;
-				queue.pushJoypadEvent(i, JoypadAxis::LEFT, axisDataList[0].lx, axisDataList[0].ly, axisDataList[0].lz);
+				queue.pushAxisEvent(InputDeviceType::JOYPAD
+					, i
+					, JoypadAxis::LEFT
+					, axisDataList[0].lx
+					, axisDataList[0].ly
+					, axisDataList[0].lz
+					);
 
 				gamepad.bLeftTrigger = state.Gamepad.bLeftTrigger;
 			}
@@ -241,7 +262,13 @@ struct Joypad
 					? float(value + (value < 0 ? XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE : -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)) / float(INT16_MAX - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 					: 0.0f
 					;
-				queue.pushJoypadEvent(i, JoypadAxis::RIGHT, axisDataList[0].rx, axisDataList[0].ry, axisDataList[0].rz);
+				queue.pushAxisEvent(InputDeviceType::JOYPAD
+					, i
+					, JoypadAxis::RIGHT
+					, axisDataList[0].rx
+					, axisDataList[0].ry
+					, axisDataList[0].rz
+					);
 
 				gamepad.sThumbRX = state.Gamepad.sThumbRX;
 			}
@@ -255,7 +282,13 @@ struct Joypad
 					? float(value + (value < 0 ? XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE : -XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)) / float(INT16_MAX - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE)
 					: 0.0f
 					;
-				queue.pushJoypadEvent(i, JoypadAxis::RIGHT, axisDataList[0].rx, axisDataList[0].ry, axisDataList[0].rz);
+				queue.pushAxisEvent(InputDeviceType::JOYPAD
+					, i
+					, JoypadAxis::RIGHT
+					, axisDataList[0].rx
+					, axisDataList[0].ry
+					, axisDataList[0].rz
+					);
 
 				gamepad.sThumbRY = state.Gamepad.sThumbRY;
 			}
@@ -268,7 +301,13 @@ struct Joypad
 					? float(value + (value < 0 ? XINPUT_GAMEPAD_TRIGGER_THRESHOLD : -XINPUT_GAMEPAD_TRIGGER_THRESHOLD)) / float(UINT8_MAX - XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
 					: 0.0f
 					;
-				queue.pushJoypadEvent(i, JoypadAxis::RIGHT, axisDataList[0].rx, axisDataList[0].ry, axisDataList[0].rz);
+				queue.pushAxisEvent(InputDeviceType::JOYPAD
+					, i
+					, JoypadAxis::RIGHT
+					, axisDataList[0].rx
+					, axisDataList[0].ry
+					, axisDataList[0].rz
+					);
 
 				gamepad.bRightTrigger = state.Gamepad.bRightTrigger;
 			}
@@ -307,10 +346,6 @@ int32_t mainThreadFunction(void* data)
 
 struct WindowsDevice
 {
-	WindowsDevice()
-	{
-	}
-
 	int	run(DeviceOptions* deviceOptions)
 	{
 		MainThreadArgs mainThreadArgs;
@@ -351,7 +386,7 @@ struct WindowsDevice
 
 		while (exitIsRequested == false)
 		{
-			joypad.update(osEventQueue);
+			joypad.update(deviceEventQueue);
 
 			while (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE) != 0)
 			{
@@ -361,6 +396,7 @@ struct WindowsDevice
 		}
 
 		mainThread.stop();
+		DestroyWindow(windowHandle);
 		return EXIT_SUCCESS;
 	}
 
@@ -370,22 +406,23 @@ struct WindowsDevice
 		{
 			case WM_DESTROY:
 			{
-				break;
+				
 			}
+			break;
 			case WM_QUIT:
 			case WM_CLOSE:
 			{
 				exitIsRequested = true;
-				osEventQueue.pushExitEvent(0);
+				deviceEventQueue.pushExitEvent();
 				return 0;
 			}
 			case WM_SIZE:
 			{
 				uint32_t width = GET_X_LPARAM(lparam);
 				uint32_t height = GET_Y_LPARAM(lparam);
-				osEventQueue.pushMetricsEvent(0, 0, width, height);
-				break;
+				deviceEventQueue.pushResolutionEvent(width, height);
 			}
+			break;
 			case WM_SYSCOMMAND:
 			{
 				switch (wparam)
@@ -399,30 +436,47 @@ struct WindowsDevice
 							PostMessage(parent, id, wparam, lparam);
 						}
 					}
+					break;
 				}
-				break;
 			}
+			break;
 			case WM_MOUSEWHEEL:
 			{
 				int32_t mx = GET_X_LPARAM(lparam);
 				int32_t my = GET_Y_LPARAM(lparam);
 				short delta = GET_WHEEL_DELTA_WPARAM(wparam);
-				osEventQueue.pushMouseEvent(mx, my, (float)(delta/WHEEL_DELTA));
-				break;
+				deviceEventQueue.pushAxisEvent(InputDeviceType::MOUSE
+					, 0
+					, MouseAxis::WHEEL
+					, 0.0f
+					, (float)(delta/WHEEL_DELTA)
+					, 0.0f
+					);
 			}
+			break;
 			case WM_MOUSEMOVE:
 			{
 				int32_t mx = GET_X_LPARAM(lparam);
 				int32_t my = GET_Y_LPARAM(lparam);
-				osEventQueue.pushMouseEvent(mx, my);
-				break;
+				deviceEventQueue.pushAxisEvent(InputDeviceType::MOUSE
+					, 0
+					, MouseAxis::CURSOR
+					, mx
+					, my
+					, 0.0f
+					);
 			}
+			break;
 			case WM_LBUTTONDOWN:
 			case WM_LBUTTONUP:
 			{
 				int32_t mx = GET_X_LPARAM(lparam);
 				int32_t my = GET_Y_LPARAM(lparam);
-				osEventQueue.pushMouseEvent(mx, my, MouseButton::LEFT, id == WM_LBUTTONDOWN);
+				deviceEventQueue.pushButtonEvent(InputDeviceType::MOUSE
+					, 0
+					, MouseButton::LEFT
+					, id == WM_LBUTTONDOWN
+					);
 				break;
 			}
 			case WM_RBUTTONUP:
@@ -430,7 +484,11 @@ struct WindowsDevice
 			{
 				int32_t mx = GET_X_LPARAM(lparam);
 				int32_t my = GET_Y_LPARAM(lparam);
-				osEventQueue.pushMouseEvent(mx, my, MouseButton::RIGHT, id == WM_RBUTTONDOWN);
+				deviceEventQueue.pushButtonEvent(InputDeviceType::MOUSE
+					, 0
+					, MouseButton::RIGHT
+					, id == WM_RBUTTONDOWN
+					);
 				break;
 			}
 			case WM_MBUTTONDOWN:
@@ -438,7 +496,11 @@ struct WindowsDevice
 			{
 				int32_t mx = GET_X_LPARAM(lparam);
 				int32_t my = GET_Y_LPARAM(lparam);
-				osEventQueue.pushMouseEvent(mx, my, MouseButton::MIDDLE, id == WM_MBUTTONDOWN);
+				deviceEventQueue.pushButtonEvent(InputDeviceType::MOUSE
+					, 0
+					, MouseButton::MIDDLE
+					, id == WM_MBUTTONDOWN
+					);
 				break;
 			}
 			case WM_KEYDOWN:
@@ -447,14 +509,16 @@ struct WindowsDevice
 			case WM_SYSKEYUP:
 			{
 				KeyboardButton::Enum key = getKeyFromWindowsKeyId(wparam & 0xff);
-
 				if (key != KeyboardButton::COUNT)
 				{
-					osEventQueue.pushKeyboardEvent(key, (id == WM_KEYDOWN || id == WM_SYSKEYDOWN));
+					deviceEventQueue.pushButtonEvent(InputDeviceType::KEYBOARD
+						, 0
+						, key
+						, (id == WM_KEYDOWN || id == WM_SYSKEYDOWN)
+						);
 				}
-
-				break;
 			}
+			break;
 			default:
 				break;
 		}
@@ -466,7 +530,7 @@ struct WindowsDevice
 
 public:
 	HWND windowHandle = nullptr;
-	OsEventQueue osEventQueue;
+	DeviceEventQueue deviceEventQueue;
 	Joypad joypad;
 };
 
@@ -494,7 +558,6 @@ struct Window_Windows : public Window
 
 	void close()
 	{
-		DestroyWindow(windowHandle);
 	}
 
 	void setupBgfx()
@@ -554,6 +617,10 @@ struct Window_Windows : public Window
 		ShowCursor(show);
 	}
 
+	void setFullscreen(bool /*isFullscreen*/)
+	{
+	}
+
 	void* getHandle()
 	{
 		return (void*)(uintptr_t)windowHandle;
@@ -605,7 +672,7 @@ namespace DisplayFn
 
 bool getNextEvent(OsEvent& ev)
 {
-	return windowsDevice.osEventQueue.popEvent(ev);
+	return windowsDevice.deviceEventQueue.popEvent(ev);
 }
 
 } // namespace Rio
@@ -644,12 +711,11 @@ int main(int argumentListCount, char** argumentList)
 	RIO_UNUSED(err);
 
 	DeviceOptions deviceOptions(argumentListCount, (const char**)argumentList);
-	if (deviceOptions.parse() == EXIT_SUCCESS)
+	if (deviceOptions.parse() != EXIT_SUCCESS)
 	{
-		return windowsDevice.run(&deviceOptions);
+		return EXIT_FAILURE;
 	}
-
-	return EXIT_FAILURE;
+	return windowsDevice.run(&deviceOptions);
 }
 
 #endif // RIO_PLATFORM_WINDOWS

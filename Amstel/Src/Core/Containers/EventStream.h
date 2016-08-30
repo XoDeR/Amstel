@@ -7,6 +7,12 @@
 namespace Rio
 {
 
+struct EventHeader
+{
+	uint32_t type;
+	uint32_t size;
+};
+
 // Array of generic event structs
 using EventStream = Array<char>;
 
@@ -15,20 +21,14 @@ using EventStream = Array<char>;
 
 namespace EventStreamFn
 {
-	struct Header
-	{
-		uint32_t type;
-		uint32_t size;
-	};
-
 	// Appends the <event> of the given <type> and <size> to the stream <s>
 	inline void write(EventStream& s, uint32_t type, uint32_t size, const void* event)
 	{
-		Header header;
-		header.type = type;
-		header.size = size;
+		EventHeader eventHeader;
+		eventHeader.type = type;
+		eventHeader.size = size;
 
-		ArrayFn::push(s, (char*)&header, sizeof(Header));
+		ArrayFn::push(s, (char*)&eventHeader, sizeof(EventHeader));
 		ArrayFn::push(s, (char*)event, size);
 	}
 

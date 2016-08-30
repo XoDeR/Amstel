@@ -19,7 +19,6 @@ struct DynamicString
 	ALLOCATOR_AWARE;
 
 	DynamicString(Allocator& a);
-	DynamicString(const char* str, Allocator& a = getDefaultAllocator());
 
 	DynamicString& operator=(const DynamicString& ds);
 	DynamicString& operator=(const char* str);
@@ -54,13 +53,6 @@ struct DynamicString
 inline DynamicString::DynamicString(Allocator& a)
 	: data(a)
 {
-}
-
-inline DynamicString::DynamicString(const char* str, Allocator& a)
-	: data(a)
-{
-	RIO_ASSERT_NOT_NULL(str);
-	ArrayFn::push(data, str, getStringLength32(str));
 }
 
 inline void DynamicString::set(const char* str, uint32_t length)

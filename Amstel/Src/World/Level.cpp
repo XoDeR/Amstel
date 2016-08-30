@@ -1,7 +1,9 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "World/Level.h"
+
 #include "Resource/LevelResource.h"
 #include "Resource/UnitResource.h"
+
 #include "World/World.h"
 #include "World/UnitManager.h"
 
@@ -9,7 +11,7 @@ namespace Rio
 {
 
 Level::Level(Allocator& a, UnitManager& unitManager, World& world, const LevelResource& levelResource)
-	: marker(MARKER)
+	: marker(LEVEL_MARKER)
 	, allocator(&a)
 	, unitManager(&unitManager)
 	, world(&world)

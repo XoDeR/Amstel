@@ -48,10 +48,9 @@ static int scriptErrorHandlerFunction(lua_State* scriptState)
 // Redirects require to the resource manager
 static int require(lua_State* scriptState)
 {
-	using namespace ScriptResourceFn;
 	ScriptStack stack(scriptState);
 	const ScriptResource* scriptResource = (ScriptResource*)getDevice()->getResourceManager()->get(RESOURCE_TYPE_SCRIPT, stack.getResourceId(1));
-	luaL_loadbuffer(scriptState, getProgram(scriptResource), scriptResource->size, "");
+	luaL_loadbuffer(scriptState, ScriptResourceFn::getProgram(scriptResource), scriptResource->size, "");
 	return 1;
 }
 
@@ -178,13 +177,13 @@ void ScriptEnvironment::callGlobalFunction(const char* function, uint8_t argumen
 			case ARGUMENT_FLOAT:
 			{
 				scriptStack.pushFloat(va_arg(variableArgumentsList, double));
-				break;
 			}
+			break;
 			default:
 			{
-				RIO_ASSERT(false, "Error, lua argument unknown");
-				break;
+				RIO_FATAL("Unknown argument type");
 			}
+			break;
 		}
 	}
 

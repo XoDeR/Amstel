@@ -4,7 +4,7 @@
 namespace Rio
 {
 
-class BundleCompiler;
+class DataCompiler;
 class CompileOptions;
 
 } // namespace Rio

@@ -2,10 +2,10 @@
 #pragma once
 
 #include "Config.h"
+#include "Core/Base/Types.h"
 #include "Core/Memory/Allocator.h"
 #include "Core/Memory/LinearAllocator.h"
 #include "Core/Strings/StringId.h"
-#include "Core/Base/Types.h"
 #include "Core/Containers/ContainerTypes.h"
 #include "Core/FileSystem/FileSystemTypes.h"
 
@@ -15,6 +15,7 @@
 #include "Device/Window.h"
 #include "Device/Display.h"
 #include "Device/InputTypes.h"
+#include "Device/BootConfig.h"
 
 #include "Script/ScriptTypes.h"
 
@@ -36,43 +37,18 @@ class Device
 public:
 	explicit Device(const DeviceOptions& deviceOptions);
 	void run();
-
-	// Returns the number of command line parameters
-	int getCommandLineArgumentListCount() const 
-	{ 
-		return deviceOptions.commandLineArgumentListCount;
-	}
-
-	// Returns command line parameters
-	const char** getCommandLineArgumentList() const 
-	{ 
-		return (const char**)deviceOptions.commandLineArgumentList;
-	}
-
-	// Returns a string identifying what platform the engine is running on
-	const char* getPlatform() const 
-	{ 
-		return RIO_PLATFORM_NAME; 
-	}
-
-	// Returns a string identifying what architecture the engine is running on
-	const char* getArchitecture() const 
-	{ 
-		return RIO_ARCH_NAME; 
-	}
-
+	int getCommandLineArgumentListCount() const;
+	const char** getCommandLineArgumentList() const;
+	// Returns a string identifying platform
+	const char* getPlatform() const;
+	// Returns a string identifying architecture
+	const char* getArchitecture() const;
 	// Returns a string identifying the engine version
-	const char* getVersion() const 
-	{ 
-		return RIO_VERSION; 
-	}
-
+	const char* getVersion() const;
 	// Return the number of frames rendered
 	uint64_t getFrameCount() const;
-
 	// Returns the time in seconds needed to render the last frame
 	float getLastDeltaTime() const;
-
 	// Returns the time in seconds since the the application started
 	double getTimeSinceStart() const;
 
@@ -101,8 +77,9 @@ public:
 	// Logs <message> to log file and console
 	void log(const char* message, LogSeverity::Enum severity);
 
+	// Getters
 	ConsoleServer* getConsoleServer();
-	BundleCompiler* getBundleCompiler();
+	DataCompiler* getDataCompiler();
 	ResourceManager* getResourceManager();
 	ScriptEnvironment* getScriptEnvironment();
 	InputManager* getInputManager();
@@ -118,13 +95,14 @@ private:
 	Device& operator=(const Device&) = delete;
 private:
 	void readConfig();
-	bool tryProcessEvents();
+	bool processEvents(int16_t& mouseX, int16_t& mouseY, int16_t& mouseLastX, int16_t& mouseLastY, bool isVsyncEnabled);
 
 	LinearAllocator allocator;
 	const DeviceOptions& deviceOptions;
+	BootConfig bootConfig;
 
 	ConsoleServer* consoleServer = nullptr;
-	BundleCompiler* bundleCompiler = nullptr;
+	DataCompiler* dataCompiler = nullptr;
 	FileSystem* bundleFileSystem = nullptr;
 	File* lastLogFile = nullptr;
 	ResourceLoader* resourceLoader = nullptr;
@@ -138,10 +116,6 @@ private:
 	ScriptEnvironment* scriptEnvironment = nullptr;
 	Display* mainDisplay = nullptr;
 	Window* mainWindow = nullptr;
-
-	StringId64 bootPackageName;
-	StringId64 bootScriptName;
-	ResourcePackage* bootResourcePackage = nullptr;
 
 	uint16_t configWindowX = 0;
 	uint16_t configWindowY = 0;
@@ -161,8 +135,6 @@ private:
 	bool paused = false;
 
 	uint64_t frameCount = 0;
-	int64_t lastTime = 0;
-	int64_t currentTime = 0;
 	float lastDeltaTime = 0.0f;
 	double timeSinceStart = 0.0;
 };

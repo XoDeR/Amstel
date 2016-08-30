@@ -17,36 +17,41 @@
 #include "World/DebugLine.h"
 #include "World/UnitManager.h"
 
-#include <btBoxShape.h>
-#include <btBvhTriangleMeshShape.h>
-#include <btCapsuleShape.h>
-#include <btCollisionObject.h>
-#include <btCompoundShape.h>
-#include <btConvexHullShape.h>
-#include <btConvexTriangleMeshShape.h>
-#include <btDbvtBroadphase.h>
-#include <btDefaultCollisionConfiguration.h>
-#include <btDefaultMotionState.h>
-#include <btDiscreteDynamicsWorld.h>
-#include <btFixedConstraint.h>
-#include <btGhostObject.h>
-#include <btHeightfieldTerrainShape.h>
-#include <btHingeConstraint.h>
-#include <btIDebugDraw.h>
-#include <btKinematicCharacterController.h>
-#include <btPoint2PointConstraint.h>
-#include <btRigidBody.h>
-#include <btSequentialImpulseConstraintSolver.h>
-#include <btSliderConstraint.h>
-#include <btSphereShape.h>
-#include <btStaticPlaneShape.h>
-#include <btTriangleMesh.h>
+#include "btBoxShape.h"
+#include "btBvhTriangleMeshShape.h"
+#include "btCapsuleShape.h"
+#include "btCollisionObject.h"
+#include "btCompoundShape.h"
+#include "btConvexHullShape.h"
+#include "btConvexTriangleMeshShape.h"
+#include "btDbvtBroadphase.h"
+#include "btDefaultCollisionConfiguration.h"
+#include "btDefaultMotionState.h"
+#include "btDiscreteDynamicsWorld.h"
+#include "btFixedConstraint.h"
+#include "btGhostObject.h"
+#include "btHeightfieldTerrainShape.h"
+#include "btHingeConstraint.h"
+#include "btIDebugDraw.h"
+#include "btKinematicCharacterController.h"
+#include "btPoint2PointConstraint.h"
+#include "btRigidBody.h"
+#include "btSequentialImpulseConstraintSolver.h"
+#include "btSliderConstraint.h"
+#include "btSphereShape.h"
+#include "btStaticPlaneShape.h"
+#include "btTriangleMesh.h"
 
 namespace Rio
 {
 
 namespace PhysicsGlobalFn
 {
+	static btDefaultCollisionConfiguration* defaultCollisionConfiguration;
+	static btCollisionDispatcher* collisionDispatcher;
+	static btBroadphaseInterface* broadphaseInterface;
+	static btSequentialImpulseConstraintSolver* sequentialImpulseConstraintSolver;
+
 	void init(Allocator& a)
 	{
 		defaultCollisionConfiguration = RIO_NEW(a, btDefaultCollisionConfiguration);
@@ -62,11 +67,7 @@ namespace PhysicsGlobalFn
 		RIO_DELETE(a, collisionDispatcher);
 		RIO_DELETE(a, defaultCollisionConfiguration);
 	}
-
-	static btDefaultCollisionConfiguration* defaultCollisionConfiguration;
-	static btCollisionDispatcher* collisionDispatcher;
-	static btBroadphaseInterface* broadphaseInterface;
-	static btSequentialImpulseConstraintSolver* sequentialImpulseConstraintSolver;
+	
 } // namespace PhysicsGlobalFn
 
 static btVector3 getBtVector3(const Vector3& v)
@@ -210,7 +211,7 @@ public:
 		RIO_DELETE(*allocator, discreteDynamicsWorld);
 	}
 
-	ColliderInstance createCollider(UnitId id, const ColliderDesc* colliderDesc)
+	virtual ColliderInstance colliderCreate(UnitId id, const ColliderDesc* colliderDesc) override
 	{
 		btTriangleIndexVertexArray* vertexArray = nullptr;
 		btCollisionShape* childShape = nullptr;
@@ -233,8 +234,8 @@ public:
 				const btScalar* pointList = (btScalar*)(data + sizeof(uint32_t));
 
 				childShape = RIO_NEW(*allocator, btConvexHullShape)(pointList, (int)count, sizeof(Vector3));
-				break;
 			}
+			break;
 			case ColliderType::MESH:
 			{
 				const char* data = (char*)&colliderDesc[1];
@@ -249,7 +250,7 @@ public:
 				part.m_numVertices = pointsCount;
 				part.m_triangleIndexBase = (const unsigned char*)indices;
 				part.m_triangleIndexStride = sizeof(uint16_t)*3;
-				part.m_numTriangles = indicesCount /3;
+				part.m_numTriangles = indicesCount / 3;
 				part.m_indexType = PHY_SHORT;
 
 				vertexArray = RIO_NEW(*allocator, btTriangleIndexVertexArray)();
@@ -258,18 +259,18 @@ public:
 				const btVector3 aabbMin(-1000.0f,-1000.0f,-1000.0f);
 				const btVector3 aabbMax(1000.0f,1000.0f,1000.0f);
 				childShape = RIO_NEW(*allocator, btBvhTriangleMeshShape)(vertexArray, false, aabbMin, aabbMax);
-				break;
 			}
+			break;
 			case ColliderType::HEIGHTFIELD:
 			{
 				RIO_FATAL("Not implemented yet");
-				break;
 			}
+			break;
 			default:
 			{
 				RIO_FATAL("Bad shape");
-				break;
 			}
+			break;
 		}
 
 		const uint32_t last = ArrayFn::getCount(colliderList);
@@ -281,10 +282,10 @@ public:
 		colliderInstanceData.shape = childShape;
 		colliderInstanceData.next.i = UINT32_MAX;
 
-		ColliderInstance colliderInstance = getFirstCollider(id);
-		while (getIsValid(colliderInstance) && getIsValid(getNextCollider(colliderInstance)))
+		ColliderInstance colliderInstance = colliderGetFirst(id);
+		while (getIsValid(colliderInstance) && getIsValid(colliderGetNext(colliderInstance)))
 		{
-			colliderInstance = getNextCollider(colliderInstance);
+			colliderInstance = colliderGetNext(colliderInstance);
 		}
 
 		if (getIsValid(colliderInstance))
@@ -300,17 +301,102 @@ public:
 		return makeColliderInstance(last);
 	}
 
-	ColliderInstance getFirstCollider(UnitId id)
+	// private implementation
+	// auxiliary function
+	void colliderRemoveNode(ColliderInstance first, ColliderInstance colliderInstance)
+	{
+		RIO_ASSERT(first.i < ArrayFn::getCount(this->colliderList), "Index out of bounds");
+		RIO_ASSERT(colliderInstance.i < ArrayFn::getCount(this->colliderList), "Index out of bounds");
+
+		const UnitId unitId = this->colliderList[first.i].unitId;
+
+		if (colliderInstance.i == first.i)
+		{
+			if (!getIsValid(colliderGetNext(colliderInstance)))
+			{
+				HashMapFn::remove(colliderMap, unitId);
+			}
+			else
+			{
+				HashMapFn::set(colliderMap, unitId, colliderGetNext(colliderInstance).i);
+			}
+		}
+		else
+		{
+			ColliderInstance previousColliderInstance = colliderGetPrevious(colliderInstance);
+			this->colliderList[previousColliderInstance.i].next = colliderGetNext(colliderInstance);
+		}
+	}
+
+	void colliderSwapNode(ColliderInstance a, ColliderInstance b)
+	{
+		RIO_ASSERT(a.i < ArrayFn::getCount(this->colliderList), "Index out of bounds");
+		RIO_ASSERT(b.i < ArrayFn::getCount(this->colliderList), "Index out of bounds");
+
+		const UnitId unitId = this->colliderList[a.i].unitId;
+		const ColliderInstance firstColliderInstance = colliderGetFirst(unitId);
+
+		if (a.i == firstColliderInstance.i)
+		{
+			HashMapFn::set(colliderMap, unitId, b.i);
+		}
+		else
+		{
+			const ColliderInstance previousA = colliderGetPrevious(a);
+			RIO_ENSURE(previousA.i != a.i);
+			this->colliderList[previousA.i].next = b;
+		}
+	}
+
+	ColliderInstance colliderGetFirst(UnitId id)
 	{
 		return makeColliderInstance(HashMapFn::get(colliderMap, id, UINT32_MAX));
 	}
 
-	ColliderInstance getNextCollider(ColliderInstance i)
+	ColliderInstance colliderGetNext(ColliderInstance i)
 	{
 		return colliderList[i.i].next;
 	}
 
-	ActorInstance createActor(UnitId unitId, const ActorResource* actorResource, const Matrix4x4& transformMatrix)
+	ColliderInstance colliderGetPrevious(ColliderInstance colliderInstance)
+	{
+		RIO_ASSERT(colliderInstance.i < ArrayFn::getCount(this->colliderList), "Index out of bounds");
+
+		const UnitId unitId = this->colliderList[colliderInstance.i].unitId;
+
+		ColliderInstance currentColliderInstance = colliderGetFirst(unitId);
+		ColliderInstance previousColliderInstance = { UINT32_MAX };
+
+		while (currentColliderInstance.i != colliderInstance.i)
+		{
+			previousColliderInstance = currentColliderInstance;
+			currentColliderInstance = colliderGetNext(currentColliderInstance);
+		}
+
+		return previousColliderInstance;
+	}
+
+	virtual void colliderDestroy(ColliderInstance colliderInstance) override
+	{
+		RIO_ASSERT(colliderInstance.i < ArrayFn::getCount(this->colliderList), "Index out of bounds");
+
+		const uint32_t last = ArrayFn::getCount(this->colliderList) - 1;
+		const UnitId unitId = this->colliderList[colliderInstance.i].unitId;
+		const ColliderInstance firstColliderInstance = colliderGetFirst(unitId);
+		const ColliderInstance lastColliderInstance = makeColliderInstance(last);
+
+		colliderSwapNode(lastColliderInstance, colliderInstance);
+		colliderRemoveNode(firstColliderInstance, colliderInstance);
+
+		RIO_DELETE(*(this->allocator), this->colliderList[colliderInstance.i].vertexArray);
+		RIO_DELETE(*(this->allocator), this->colliderList[colliderInstance.i].shape);
+
+		this->colliderList[colliderInstance.i] = colliderList[last];
+
+		ArrayFn::popBack(this->colliderList);
+	}
+
+	ActorInstance actorCreate(UnitId unitId, const ActorResource* actorResource, const Matrix4x4& transformMatrix)
 	{
 		const PhysicsConfigActor* actorClass = PhysicsConfigResourceFn::getPhysicsConfigActor(physicsConfigResource, actorResource->actorClass);
 
@@ -322,11 +408,11 @@ public:
 		// Create compound shape
 		btCompoundShape* shape = RIO_NEW(*allocator, btCompoundShape)(true);
 
-		ColliderInstance colliderInstance = getFirstCollider(unitId);
+		ColliderInstance colliderInstance = colliderGetFirst(unitId);
 		while (getIsValid(colliderInstance) == true)
 		{
 			shape->addChildShape(btTransform::getIdentity(), colliderList[colliderInstance.i].shape);
-			colliderInstance = getNextCollider(colliderInstance);
+			colliderInstance = colliderGetNext(colliderInstance);
 		}
 
 		// Create motion state
@@ -387,7 +473,7 @@ public:
 		return makeActorInstance(last);
 	}
 
-	void destroyActor(ActorInstance actorInstance)
+	void actorDestroy(ActorInstance actorInstance)
 	{
 		const uint32_t lastActorIndex = ArrayFn::getCount(actorList) - 1;
 		const UnitId unitId = actorList[actorInstance.i].unitId;
@@ -407,12 +493,12 @@ public:
 		HashMapFn::remove(actorMap, unitId);
 	}
 
-	ActorInstance getActor(UnitId id)
+	ActorInstance actorGet(UnitId id)
 	{
 		return makeActorInstance(HashMapFn::get(actorMap, id, UINT32_MAX));
 	}
 
-	Vector3 getActorWorldPosition(ActorInstance i) const
+	Vector3 actorGetWorldPosition(ActorInstance i) const
 	{
 		btTransform pose;
 		actorList[i.i].actor->getMotionState()->getWorldTransform(pose);
@@ -420,14 +506,14 @@ public:
 		return getVector3(position);
 	}
 
-	Quaternion getActorWorldRotation(ActorInstance i) const
+	Quaternion actorGetWorldRotation(ActorInstance i) const
 	{
 		btTransform pose;
 		actorList[i.i].actor->getMotionState()->getWorldTransform(pose);
 		return getQuaternion(pose.getRotation());
 	}
 
-	Matrix4x4 getActorWorldPose(ActorInstance i) const
+	Matrix4x4 actorGetWorldPose(ActorInstance i) const
 	{
 		btTransform pose;
 		actorList[i.i].actor->getMotionState()->getWorldTransform(pose);
@@ -436,21 +522,21 @@ public:
 		return createMatrix4x4(getQuaternion(rotation), getVector3(position));
 	}
 
-	void teleportActorWorldPosition(ActorInstance i, const Vector3& position)
+	void actorTeleportWorldPosition(ActorInstance i, const Vector3& position)
 	{
 		btTransform pose = actorList[i.i].actor->getCenterOfMassTransform();
 		pose.setOrigin(getBtVector3(position));
 		actorList[i.i].actor->setCenterOfMassTransform(pose);
 	}
 
-	void teleportActorWorldRotation(ActorInstance i, const Quaternion& rotation)
+	void actorTeleportWorldRotation(ActorInstance i, const Quaternion& rotation)
 	{
 		btTransform pose = actorList[i.i].actor->getCenterOfMassTransform();
 		pose.setRotation(getBtQuaternion(rotation));
 		actorList[i.i].actor->setCenterOfMassTransform(pose);
 	}
 
-	void teleportActorWorldPose(ActorInstance i, const Matrix4x4& m)
+	void actorTeleportWorldPose(ActorInstance i, const Matrix4x4& m)
 	{
 		const Quaternion rotation = getRotationAsQuaternion(m);
 		const Vector3 position = getTranslation(m);
@@ -461,9 +547,9 @@ public:
 		actorList[i.i].actor->setCenterOfMassTransform(pose);
 	}
 
-	Vector3 getActorCenterOfMass(ActorInstance i) const
+	Vector3 actorGetCenterOfMass(ActorInstance i) const
 	{
-		if (getIsStatic(i))
+		if (actorGetIsStatic(i))
 		{
 			return VECTOR3_ZERO;
 		}
@@ -472,32 +558,32 @@ public:
 		return getVector3(centerOfMass);
 	}
 
-	void enableActorGravity(ActorInstance i)
+	void actorEnableGravity(ActorInstance i)
 	{
 		actorList[i.i].actor->setGravity(discreteDynamicsWorld->getGravity());
 	}
 
-	void disableActorGravity(ActorInstance i)
+	void actorDisableGravity(ActorInstance i)
 	{
 		actorList[i.i].actor->setGravity(btVector3(0.0f, 0.0f, 0.0f));
 	}
 
-	void enableActorCollision(ActorInstance /*i*/)
+	void actorEnableCollision(ActorInstance /*i*/)
 	{
 		RIO_FATAL("Not implemented yet");
 	}
 
-	void disableActorCollision(ActorInstance /*i*/)
+	void actorDisableCollision(ActorInstance /*i*/)
 	{
 		RIO_FATAL("Not implemented yet");
 	}
 
-	void setActorCollisionFilter(ActorInstance /*i*/, StringId32 /*filter*/)
+	void actorSetCollisionFilter(ActorInstance /*i*/, StringId32 /*filter*/)
 	{
 		RIO_FATAL("Not implemented yet");
 	}
 
-	void setActorKinematic(ActorInstance i, bool kinematic)
+	void actorSetKinematic(ActorInstance i, bool kinematic)
 	{
 		if (kinematic == true)
 		{
@@ -505,9 +591,9 @@ public:
 		}
 	}
 
-	void moveActor(ActorInstance i, const Vector3& position)
+	void actorMove(ActorInstance i, const Vector3& position)
 	{
-		if (!getIsKinematic(i))
+		if (!actorGetIsKinematic(i))
 		{
 			return;
 		}
@@ -515,12 +601,12 @@ public:
 		actorList[i.i].actor->setLinearVelocity(getBtVector3(position));
 	}
 
-	bool getIsStatic(ActorInstance i) const
+	bool actorGetIsStatic(ActorInstance i) const
 	{
 		return actorList[i.i].actor->getCollisionFlags() & btCollisionObject::CF_STATIC_OBJECT;
 	}
 
-	bool getIsDynamic(ActorInstance i) const
+	bool actorGetIsDynamic(ActorInstance i) const
 	{
 		const int flags = actorList[i.i].actor->getCollisionFlags();
 		return !(flags & btCollisionObject::CF_STATIC_OBJECT)
@@ -528,149 +614,149 @@ public:
 			;
 	}
 
-	bool getIsKinematic(ActorInstance i) const
+	bool actorGetIsKinematic(ActorInstance i) const
 	{
 		const int flags = actorList[i.i].actor->getCollisionFlags();
 		return (flags & btCollisionObject::CF_KINEMATIC_OBJECT) != 0;
 	}
 
-	bool getIsNonKinematic(ActorInstance i) const
+	bool actorGetIsNonKinematic(ActorInstance i) const
 	{
-		return getIsDynamic(i) && !getIsKinematic(i);
+		return actorGetIsDynamic(i) && !actorGetIsKinematic(i);
 	}
 
-	float getActorLinearDamping(ActorInstance i) const
+	float actorGetLinearDamping(ActorInstance i) const
 	{
 		return actorList[i.i].actor->getLinearDamping();
 	}
 
-	void setActorLinearDamping(ActorInstance i, float rate)
+	void actorSetLinearDamping(ActorInstance i, float rate)
 	{
 		actorList[i.i].actor->setDamping(rate, actorList[i.i].actor->getAngularDamping());
 	}
 
-	float getActorAngularDamping(ActorInstance i) const
+	float actorGetAngularDamping(ActorInstance i) const
 	{
 		return actorList[i.i].actor->getAngularDamping();
 	}
 
-	void setActorAngularDamping(ActorInstance i, float rate)
+	void actorSetAngularDamping(ActorInstance i, float rate)
 	{
 		actorList[i.i].actor->setDamping(actorList[i.i].actor->getLinearDamping(), rate);
 	}
 
-	Vector3 getActorLinearVelocity(ActorInstance i) const
+	Vector3 actorGetLinearVelocity(ActorInstance i) const
 	{
 		btVector3 v = actorList[i.i].actor->getLinearVelocity();
 		return getVector3(v);
 	}
 
-	void setActorLinearVelocity(ActorInstance i, const Vector3& velocity)
+	void actorSetLinearVelocity(ActorInstance i, const Vector3& velocity)
 	{
 		actorList[i.i].actor->setLinearVelocity(getBtVector3(velocity));
 	}
 
-	Vector3 getActorAngularVelocity(ActorInstance i) const
+	Vector3 actorGetAngularVelocity(ActorInstance i) const
 	{
 		btVector3 v = actorList[i.i].actor->getAngularVelocity();
 		return getVector3(v);
 	}
 
-	void setActorAngularVelocity(ActorInstance i, const Vector3& velocity)
+	void actorSetAngularVelocity(ActorInstance i, const Vector3& velocity)
 	{
 		actorList[i.i].actor->setAngularVelocity(getBtVector3(velocity));
 	}
 
-	void addActorImpulse(ActorInstance i, const Vector3& impulse)
+	void actorAddImpulse(ActorInstance i, const Vector3& impulse)
 	{
 		actorList[i.i].actor->activate();
 		actorList[i.i].actor->applyCentralImpulse(getBtVector3(impulse));
 	}
 
-	void addActorImpulseAt(ActorInstance i, const Vector3& impulse, const Vector3& position)
+	void actorAddImpulseAt(ActorInstance i, const Vector3& impulse, const Vector3& position)
 	{
 		actorList[i.i].actor->activate();
 		actorList[i.i].actor->applyImpulse(getBtVector3(impulse), getBtVector3(position));
 	}
 
-	void addActorTorqueImpulse(ActorInstance i, const Vector3& impulse)
+	void actorAddTorqueImpulse(ActorInstance i, const Vector3& impulse)
 	{
 		actorList[i.i].actor->applyTorqueImpulse(getBtVector3(impulse));
 	}
 
-	void pushActor(ActorInstance i, const Vector3& velocity, float mass)
+	void actorPush(ActorInstance i, const Vector3& velocity, float mass)
 	{
 		const Vector3 force = velocity * mass;
 		actorList[i.i].actor->applyCentralForce(getBtVector3(force));
 	}
 
-	void pushActorAt(ActorInstance i, const Vector3& velocity, float mass, const Vector3& position)
+	void actorPushAt(ActorInstance i, const Vector3& velocity, float mass, const Vector3& position)
 	{
 		const Vector3 force = velocity * mass;
 		actorList[i.i].actor->applyForce(getBtVector3(force), getBtVector3(position));
 	}
 
-	bool getIsSleeping(ActorInstance i)
+	bool actorGetIsSleeping(ActorInstance i)
 	{
 		return !actorList[i.i].actor->isActive();
 	}
 
-	void wakeUp(ActorInstance i)
+	void actorWakeUp(ActorInstance i)
 	{
 		actorList[i.i].actor->activate(true);
 	}
 
-	ControllerInstance createController(UnitId /*id*/,	const ControllerDesc& /*controllerDesc*/, const Matrix4x4& /*transformMatrix*/)
+	ControllerInstance controllerCreate(UnitId /*id*/,	const ControllerDesc& /*controllerDesc*/, const Matrix4x4& /*transformMatrix*/)
 	{
 		RIO_FATAL("Not implemented yet");
 		return makeControllerInstance(UINT32_MAX);
 	}
 
-	void destroyController(ControllerInstance /*i*/)
+	void controllerDestroy(ControllerInstance /*i*/)
 	{
 		RIO_FATAL("Not implemented yet");
 	}
 
-	ControllerInstance getController(UnitId unitId)
+	ControllerInstance controllerGet(UnitId unitId)
 	{
 		return makeControllerInstance(HashMapFn::get(controllerMap, unitId, UINT32_MAX));
 	}
 
-	void moveController(ControllerInstance i, const Vector3& direction)
+	void controllerMove(ControllerInstance i, const Vector3& direction)
 	{
 		controllerList[i.i].kinematicCharacterController->setWalkDirection(getBtVector3(direction));
 	}
 
-	void setHeight(ControllerInstance /*i*/, float /*height*/)
+	void controllerSetHeight(ControllerInstance /*i*/, float /*height*/)
 	{
 		RIO_FATAL("Not implemented yet");
 	}
 
-	Vector3 getPosition(ControllerInstance /*i*/) const
+	Vector3 controllerGetPosition(ControllerInstance /*i*/) const
 	{
 		RIO_FATAL("Not implemented yet");
 		return VECTOR3_ZERO;
 	}
 
-	bool doesCollideUp(ControllerInstance /*i*/) const
+	bool controllerDoesCollideUp(ControllerInstance /*i*/) const
 	{
 		RIO_FATAL("Not implemented yet");
 		return false;
 	}
 
-	bool doesCollideDown(ControllerInstance /*i*/) const
+	bool controllerDoesCollideDown(ControllerInstance /*i*/) const
 	{
 		RIO_FATAL("Not implemented yet");
 		return false;
 	}
 
-	bool doesCollideSides(ControllerInstance /*i*/) const
+	bool controllerDoesCollideSides(ControllerInstance /*i*/) const
 	{
 		RIO_FATAL("Not implemented yet");
 		return false;
 	}
 
-	JointInstance createJoint(ActorInstance a0, ActorInstance a1, const JointDesc& jointDesc)
+	JointInstance jointCreate(ActorInstance a0, ActorInstance a1, const JointDesc& jointDesc)
 	{
 		const btVector3 anchor0 = getBtVector3(jointDesc.anchor0);
 		const btVector3 anchor1 = getBtVector3(jointDesc.anchor1);
@@ -689,8 +775,8 @@ public:
 	 				, frame0
 	 				, frame1
 	 				);
-				break;
 			}
+			break;
 			case JointType::SPRING:
 			{
 				joint = RIO_NEW(*allocator, btPoint2PointConstraint)(*actor0
@@ -698,8 +784,8 @@ public:
 					, anchor0
 					, anchor1
 					);
-				break;
 			}
+			break;
 			case JointType::HINGE:
 			{
 				btHingeConstraint* hinge = RIO_NEW(*allocator, btHingeConstraint)(*actor0
@@ -721,13 +807,13 @@ public:
 					);
 
 				joint = hinge;
-				break;
 			}
+			break;
 			default:
 			{
-				RIO_FATAL("Bad joint type");
-				break;
+				RIO_FATAL("Unknown joint type");
 			}
+			break;
 		}
 
 		joint->setBreakingImpulseThreshold(jointDesc.breakForce);
@@ -736,7 +822,7 @@ public:
 		return makeJointInstance(UINT32_MAX);
 	}
 
-	void destroyJoint(JointInstance /*i*/)
+	void jointDestroy(JointInstance /*i*/)
 	{
 		RIO_FATAL("Not implemented yet");
 	}
@@ -752,18 +838,16 @@ public:
 			{
 				btCollisionWorld::ClosestRayResultCallback closestRayResultCallback(start, end);
 				discreteDynamicsWorld->rayTest(start, end, closestRayResultCallback);
+				ArrayFn::resize(hits, 1);
 
 				if (closestRayResultCallback.hasHit() == true)
 				{
-					RaycastHit raycastHit;
-					raycastHit.position = getVector3(closestRayResultCallback.m_hitPointWorld);
-					raycastHit.normal = getVector3(closestRayResultCallback.m_hitNormalWorld);
-					raycastHit.actor.i = (uint32_t)(uintptr_t)btRigidBody::upcast(closestRayResultCallback.m_collisionObject)->getUserPointer();
-					ArrayFn::pushBack(hits, raycastHit);
+					hits[0].position = getVector3(closestRayResultCallback.m_hitPointWorld);
+					hits[0].normal = getVector3(closestRayResultCallback.m_hitNormalWorld);
+					hits[0].actor.i = (uint32_t)(uintptr_t)btRigidBody::upcast(closestRayResultCallback.m_collisionObject)->getUserPointer();
 				}
-
-				break;
 			}
+			break;
 			case RaycastMode::ALL:
 			{
 				btCollisionWorld::AllHitsRayResultCallback closestRayResultCallback(start, end);
@@ -776,21 +860,18 @@ public:
 
 					for (int i = 0; i < hitPointCount; ++i)
 					{
-						RaycastHit raycastHit;
-						raycastHit.position = getVector3(closestRayResultCallback.m_hitPointWorld[i]);
-						raycastHit.normal = getVector3(closestRayResultCallback.m_hitNormalWorld[i]);
-						raycastHit.actor.i = (uint32_t)(uintptr_t)btRigidBody::upcast(closestRayResultCallback.m_collisionObjects[i])->getUserPointer();
-						hits[i] = raycastHit;
+						hits[i].position = getVector3(closestRayResultCallback.m_hitPointWorld[i]);
+						hits[i].normal = getVector3(closestRayResultCallback.m_hitNormalWorld[i]);
+						hits[i].actor.i = (uint32_t)(uintptr_t)btRigidBody::upcast(closestRayResultCallback.m_collisionObjects[i])->getUserPointer();
 					}
 				}
-
-				break;
 			}
+			break;
 			default:
 			{
-				RIO_FATAL("Bad raycast mode");
-				break;
+				RIO_FATAL("Unknown raycast mode");
 			}
+			break;
 		}
 	}
 
@@ -840,17 +921,15 @@ public:
 				&& body->isActive()
 				)
 			{
+				const UnitId unitId = actorList[(uint32_t)(uintptr_t)body->getUserPointer()].unitId;
+
 				btTransform transform;
 				body->getMotionState()->getWorldTransform(transform);
-				const btQuaternion btRotation = transform.getRotation();
-				const btVector3 btPosition = transform.getOrigin();
-				const Quaternion rotation = getQuaternion(btRotation);
-				const Vector3 position = getVector3(btPosition);
 
-				const uint32_t actorIndex = (uint32_t)(uintptr_t)body->getUserPointer();
-				const UnitId unitId = actorList[actorIndex].unitId;
-
-				postTransformEvent(unitId, position, rotation);
+				postTransformEvent(unitId
+					, getVector3(transform.getOrigin())
+					, getQuaternion(transform.getRotation())
+					);
 			}
 		}
 	}
@@ -860,7 +939,7 @@ public:
 		return eventStream;
 	}
 
-	void drawDebug()
+	virtual void debugDraw() override
 	{
 		if (!isDebugDrawing)
 		{
@@ -928,10 +1007,24 @@ public:
 
 	void unitDestroyedCallback(UnitId unitId)
 	{
-		ActorInstance firstActor = getActor(unitId);
-		if (getIsValid(firstActor))
 		{
-			destroyActor(firstActor);
+			ActorInstance firstActor = actorGet(unitId);
+			if (getIsValid(firstActor))
+			{
+				actorDestroy(firstActor);
+			}
+		}
+
+		{
+			ColliderInstance currentCollider = colliderGetFirst(unitId);
+			ColliderInstance nextCollider;
+
+			while (getIsValid(currentCollider))
+			{
+				nextCollider = colliderGetNext(currentCollider);
+				colliderDestroy(currentCollider);
+				currentCollider = nextCollider;
+			}
 		}
 	}
 

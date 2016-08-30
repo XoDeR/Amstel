@@ -9,11 +9,11 @@
 namespace Rio
 {
 
-const ResourceManager::ResourceEntry ResourceManager::ResourceEntry::NOT_FOUND = { 0xffffffffu, NULL };
+const ResourceManager::ResourceEntry ResourceManager::ResourceEntry::NOT_FOUND = { 0xffffffffu, nullptr };
 
-ResourceManager::ResourceManager(ResourceLoader& rl)
+ResourceManager::ResourceManager(ResourceLoader& resourceLoader)
 	: resourceHeap(getDefaultAllocator(), "resource")
-	, resourceLoader(&rl)
+	, resourceLoader(&resourceLoader)
 	, resourceTypeDataMap(getDefaultAllocator())
 	, resourceMap(getDefaultAllocator())
 {

@@ -64,14 +64,17 @@ struct UniformHandle
 	// data
 };
 
-namespace MaterialResourceFn
+namespace MaterialResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void online(StringId64 id, ResourceManager& resourceManager);
 	void offline(StringId64 id, ResourceManager& resourceManager);
 	void unload(Allocator& a, void* resource);
+} // namespace MaterialResourceInternalFn
 
+namespace MaterialResourceFn
+{
 	UniformData* getUniformData(const MaterialResource* materialResource, uint32_t i);
 	UniformData* getUniformDataByName(const MaterialResource* materialResource, StringId32 name);
 	const char* getUniformName(const MaterialResource* materialResource, const UniformData* uniformData);

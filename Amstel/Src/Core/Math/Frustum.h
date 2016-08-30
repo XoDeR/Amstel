@@ -4,7 +4,7 @@
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Intersection.h"
 #include "Core/Math/MathTypes.h"
-#include "Core/Math/Plane.h"
+#include "Core/Math/Plane3.h"
 
 namespace Rio
 {
@@ -66,22 +66,22 @@ namespace FrustumFn
 		f.far.n.z    = m.z.w - m.z.z;
 		f.far.d      = m.t.w - m.t.z;
 
-		PlaneFn::normalize(f.left);
-		PlaneFn::normalize(f.right);
-		PlaneFn::normalize(f.bottom);
-		PlaneFn::normalize(f.top);
-		PlaneFn::normalize(f.near);
-		PlaneFn::normalize(f.far);
+		Plane3Fn::normalize(f.left);
+		Plane3Fn::normalize(f.right);
+		Plane3Fn::normalize(f.bottom);
+		Plane3Fn::normalize(f.top);
+		Plane3Fn::normalize(f.near);
+		Plane3Fn::normalize(f.far);
 	}
 
 	inline bool containsPoint(const Frustum& f, const Vector3& p)
 	{
-		return !(PlaneFn::getDistanceToPoint(f.left, p) < 0.0f
-			|| PlaneFn::getDistanceToPoint(f.right, p) < 0.0f
-			|| PlaneFn::getDistanceToPoint(f.bottom, p) < 0.0f
-			|| PlaneFn::getDistanceToPoint(f.top, p) < 0.0f
-			|| PlaneFn::getDistanceToPoint(f.near, p) < 0.0f
-			|| PlaneFn::getDistanceToPoint(f.far, p) < 0.0f
+		return !(Plane3Fn::getDistanceToPoint(f.left, p) < 0.0f
+			|| Plane3Fn::getDistanceToPoint(f.right, p) < 0.0f
+			|| Plane3Fn::getDistanceToPoint(f.bottom, p) < 0.0f
+			|| Plane3Fn::getDistanceToPoint(f.top, p) < 0.0f
+			|| Plane3Fn::getDistanceToPoint(f.near, p) < 0.0f
+			|| Plane3Fn::getDistanceToPoint(f.far, p) < 0.0f
 			);
 	}
 
@@ -98,7 +98,7 @@ namespace FrustumFn
 		// 6 = Far top right
 		// 7 = Far top left
 
-		const Plane* side = &f.left;
+		const Plane3* side = &f.left;
 		Vector3 ip;
 
 		switch (index)

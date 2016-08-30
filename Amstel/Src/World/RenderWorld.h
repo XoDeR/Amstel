@@ -4,8 +4,10 @@
 #include "Core/Containers/ContainerTypes.h"
 #include "Core/Math/MathTypes.h"
 #include "Core/Strings/StringId.h"
+
 #include "Resource/ResourceTypes.h"
 #include "Resource/MeshResource.h"
+
 #include "World/WorldTypes.h"
 
 #include <bgfx/bgfx.h>
@@ -15,57 +17,59 @@ namespace Rio
 
 class RenderWorld
 {
+private:
+	uint32_t marker = 0;
 public:
 	RenderWorld(Allocator& a, ResourceManager& resourceManager, ShaderManager& shaderManager, MaterialManager& materialManager, UnitManager& unitManager);
 	~RenderWorld();
-	MeshInstance createMesh(UnitId id, const MeshRendererDesc& meshRendererDesc, const Matrix4x4& transform);
-	void destroyMesh(MeshInstance i);
-	void getMeshInstanceList(UnitId id, Array<MeshInstance>& instances);
-	void setMeshMaterial(MeshInstance i, StringId64 id);
-	void setMeshVisible(MeshInstance i, bool visible);
-	Obb getMeshObb(MeshInstance i);
-	float getMeshRaycast(MeshInstance i, const Vector3& from, const Vector3& direction);
 
-	SpriteInstance createSprite(UnitId id, const SpriteRendererDesc& spriteRendererDesc, const Matrix4x4& transform);
-	void destroySprite(SpriteInstance i);
+	MeshInstance meshCreate(UnitId id, const MeshRendererDesc& meshRendererDesc, const Matrix4x4& transform);
+	void meshDestroy(MeshInstance i);
+	void meshGetInstanceList(UnitId id, Array<MeshInstance>& instances);
+	void meshSetMaterial(MeshInstance i, StringId64 id);
+	void meshSetVisible(MeshInstance i, bool visible);
+	Obb meshGetObb(MeshInstance i);
+	float meshGetRaycast(MeshInstance i, const Vector3& from, const Vector3& direction);
+
+	SpriteInstance spriteCreate(UnitId id, const SpriteRendererDesc& spriteRendererDesc, const Matrix4x4& transform);
+	void spriteDestroy(SpriteInstance i);
 	// Returns the sprite instances of the unit <id>
-	void getSpriteInstanceList(UnitId id, Array<SpriteInstance>& instances);
-	void setSpriteMaterial(SpriteInstance i, StringId64 id);
-	void setSpriteFrame(SpriteInstance i, uint32_t index);
-	void setSpriteVisible(SpriteInstance i, bool visible);
+	SpriteInstance spriteGet(UnitId id);
+	void spriteSetMaterial(SpriteInstance i, StringId64 id);
+	void spriteSetFrame(SpriteInstance i, uint32_t index);
+	void spriteSetVisible(SpriteInstance i, bool visible);
 
-	LightInstance createLight(UnitId id, const LightDesc& lightDesc, const Matrix4x4& transform);
-	void destroyLight(LightInstance i);
+	LightInstance lightCreate(UnitId id, const LightDesc& lightDesc, const Matrix4x4& transform);
+	void lightDestroy(LightInstance i);
 	// Returns the light of the unit <id>
-	LightInstance getLight(UnitId id);
+	LightInstance lightGet(UnitId id);
 	// Returns the type of the light <i>
-	LightType::Enum getLightType(LightInstance i);
+	LightType::Enum lightGetType(LightInstance i);
 	// Returns the color of the light <i>
-	Color4 getLightColor(LightInstance i);
+	Color4 lightGetColor(LightInstance i);
 	// Returns the range of the light <i>
-	float getLightRange(LightInstance i);
+	float lightGetRange(LightInstance i);
 	// Returns the intensity of the light <i>
-	float getLightIntensity(LightInstance i);
+	float lightGetIntensity(LightInstance i);
 	// Returns the spot angle of the light <i>
-	float getLightSpotAngle(LightInstance i);
+	float lightGetSpotAngle(LightInstance i);
 	// Sets the <type> of the light <i>
-	void setLightType(LightInstance i, LightType::Enum type);
+	void lightSetType(LightInstance i, LightType::Enum type);
 	// Sets the <color> of the light <i>
-	void setLightColor(LightInstance i, const Color4& color);
+	void lightSetColor(LightInstance i, const Color4& color);
 	// Sets the <range> of the light <i>
-	void setLightRange(LightInstance i, float range);
+	void lightSetRange(LightInstance i, float range);
 	// Sets the <intensity> of the light <i>
-	void setLightIntensity(LightInstance i, float intensity);
+	void lightSetIntensity(LightInstance i, float intensity);
 	// Sets the spot <angle> of the light <i>
-	void setLightSpotAngle(LightInstance i, float angle);
+	void lightSetSpotAngle(LightInstance i, float angle);
+	void lightDebugDraw(LightInstance i, DebugLine& debugLine);
 
 	void updateTransforms(const UnitId* begin, const UnitId* end, const Matrix4x4* world);
 
 	void render(const Matrix4x4& view, const Matrix4x4& projection);
 	void enableDebugDrawing(bool enable);
-	void drawDebug(DebugLine& debugLine);
-
-	static const uint32_t MARKER = 0xc82277de;
+	void debugDraw(DebugLine& debugLine);
 private:
 
 	static void unitDestroyedCallback(UnitId id, void* userPtr)
@@ -169,17 +173,12 @@ private:
 			memset(&data, 0, sizeof(data));
 		}
 
-		void allocate(uint32_t spriteInstancesCount);
-		void grow();
 		SpriteInstance create(UnitId id, const SpriteResource* spriteResource, StringId64 material, const Matrix4x4& transform);
 		void destroy(SpriteInstance i);
+		SpriteInstance getSprite(UnitId id);
 		bool has(UnitId id);
-		SpriteInstance getFirst(UnitId id);
-		SpriteInstance getNext(SpriteInstance i);
-		SpriteInstance getPrev(SpriteInstance i);
-		void addNode(SpriteInstance first, SpriteInstance i);
-		void removeNode(SpriteInstance first, SpriteInstance i);
-		void swapNode(SpriteInstance a, SpriteInstance b);
+		void allocate(uint32_t spriteInstancesCount);
+		void grow();
 		void destroy();
 
 		SpriteInstance makeInstance(uint32_t i) 
@@ -244,13 +243,11 @@ private:
 		LightInstanceData data;
 	};
 
-	uint32_t marker;
-
-	Allocator* allocator;
-	ResourceManager* resourceManager;
-	ShaderManager* shaderManager;
-	MaterialManager* materialManager;
-	UnitManager* unitManager;
+	Allocator* allocator = nullptr;
+	ResourceManager* resourceManager = nullptr;
+	ShaderManager* shaderManager = nullptr;
+	MaterialManager* materialManager = nullptr;
+	UnitManager* unitManager = nullptr;
 
 	bgfx::UniformHandle uniformLightPosition;
 	bgfx::UniformHandle uniformLightDirection;

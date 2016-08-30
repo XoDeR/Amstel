@@ -1,13 +1,16 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "World/RenderWorld.h"
+
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Color4.h"
 #include "Core/Containers/HashMap.h"
 #include "Core/Math/Intersection.h"
 #include "Core/Math/Matrix4x4.h"
+
 #include "Resource/MeshResource.h"
 #include "Resource/ResourceManager.h"
 #include "Resource/SpriteResource.h"
+
 #include "World/DebugLine.h"
 #include "World/Material.h"
 #include "World/MaterialManager.h"
@@ -19,7 +22,7 @@ namespace Rio
 {
 
 RenderWorld::RenderWorld(Allocator& a, ResourceManager& resourceManager, ShaderManager& shaderManager, MaterialManager& materialManager, UnitManager& unitManager)
-	: marker(MARKER)
+	: marker(RENDER_WORLD_MARKER)
 	, allocator(&a)
 	, resourceManager(&resourceManager)
 	, shaderManager(&shaderManager)
@@ -51,7 +54,7 @@ RenderWorld::~RenderWorld()
 	marker = 0;
 }
 
-MeshInstance RenderWorld::createMesh(UnitId id, const MeshRendererDesc& meshRendererDesc, const Matrix4x4& transform)
+MeshInstance RenderWorld::meshCreate(UnitId id, const MeshRendererDesc& meshRendererDesc, const Matrix4x4& transform)
 {
 	const MeshResource* meshResource = (const MeshResource*)resourceManager->get(RESOURCE_TYPE_MESH, meshRendererDesc.meshResource);
 	const MeshGeometry* meshGeometry = meshResource->getMeshGeometry(meshRendererDesc.geometryName);
@@ -60,12 +63,12 @@ MeshInstance RenderWorld::createMesh(UnitId id, const MeshRendererDesc& meshRend
 	return meshManager.create(id, meshResource, meshGeometry, meshRendererDesc.materialResource, transform);
 }
 
-void RenderWorld::destroyMesh(MeshInstance i)
+void RenderWorld::meshDestroy(MeshInstance i)
 {
 	meshManager.destroy(i);
 }
 
-void RenderWorld::getMeshInstanceList(UnitId id, Array<MeshInstance>& meshInstanceList)
+void RenderWorld::meshGetInstanceList(UnitId id, Array<MeshInstance>& meshInstanceList)
 {
 	MeshInstance meshInstance = meshManager.getFirst(id);
 
@@ -76,24 +79,31 @@ void RenderWorld::getMeshInstanceList(UnitId id, Array<MeshInstance>& meshInstan
 	}
 }
 
-void RenderWorld::setMeshMaterial(MeshInstance i, StringId64 id)
+void RenderWorld::meshSetMaterial(MeshInstance i, StringId64 id)
 {
 	RIO_ASSERT(i.i < meshManager.data.size, "Index out of bounds");
 	meshManager.data.material[i.i] = id;
 }
 
-void RenderWorld::setMeshVisible(MeshInstance i, bool visible)
+void RenderWorld::meshSetVisible(MeshInstance i, bool visible)
 {
 	RIO_ASSERT(i.i < meshManager.data.size, "Index out of bounds");
 }
 
-Obb RenderWorld::getMeshObb(MeshInstance i)
+Obb RenderWorld::meshGetObb(MeshInstance i)
 {
 	RIO_ASSERT(i.i < meshManager.data.size, "Index out of bounds");
-	return meshManager.data.obb[i.i];
+	const Matrix4x4& world = meshManager.data.world[i.i];
+	const Obb& obb = meshManager.data.obb[i.i];
+
+	Obb result;
+	result.transformMatrix = obb.transformMatrix * world;
+	result.halfExtents = obb.halfExtents;
+
+	return result;
 }
 
-float RenderWorld::getMeshRaycast(MeshInstance i, const Vector3& from, const Vector3& direction)
+float RenderWorld::meshGetRaycast(MeshInstance i, const Vector3& from, const Vector3& direction)
 {
 	RIO_ASSERT(i.i < meshManager.data.size, "Index out of bounds");
 	const MeshGeometry* meshGeometry = meshManager.data.geometry[i.i];
@@ -107,7 +117,7 @@ float RenderWorld::getMeshRaycast(MeshInstance i, const Vector3& from, const Vec
 		);
 }
 
-SpriteInstance RenderWorld::createSprite(UnitId id, const SpriteRendererDesc& spriteRendererDesc, const Matrix4x4& transform)
+SpriteInstance RenderWorld::spriteCreate(UnitId id, const SpriteRendererDesc& spriteRendererDesc, const Matrix4x4& transform)
 {
 	const SpriteResource* spriteResource = (const SpriteResource*)resourceManager->get(RESOURCE_TYPE_SPRITE, spriteRendererDesc.spriteResourceName);
 	materialManager->createMaterial(spriteRendererDesc.materialResource);
@@ -115,111 +125,105 @@ SpriteInstance RenderWorld::createSprite(UnitId id, const SpriteRendererDesc& sp
 	return spriteManager.create(id, spriteResource, spriteRendererDesc.materialResource, transform);
 }
 
-void RenderWorld::destroySprite(SpriteInstance i)
+void RenderWorld::spriteDestroy(SpriteInstance i)
 {
 	RIO_ASSERT(i.i < spriteManager.data.size, "Index out of bounds");
 	spriteManager.destroy(i);
 }
 
-void RenderWorld::getSpriteInstanceList(UnitId id, Array<SpriteInstance>& spriteInstanceList)
+SpriteInstance RenderWorld::spriteGet(UnitId unitId)
 {
-	SpriteInstance spriteInstance = spriteManager.getFirst(id);
-
-	while (spriteManager.getIsValid(spriteInstance))
-	{
-		ArrayFn::pushBack(spriteInstanceList, spriteInstance);
-		spriteInstance = spriteManager.getNext(spriteInstance);
-	}
+	return spriteManager.getSprite(unitId);
 }
 
-void RenderWorld::setSpriteMaterial(SpriteInstance i, StringId64 id)
+void RenderWorld::spriteSetMaterial(SpriteInstance i, StringId64 id)
 {
 	RIO_ASSERT(i.i < spriteManager.data.size, "Index out of bounds");
 	spriteManager.data.material[i.i] = id;
 }
 
-void RenderWorld::setSpriteVisible(SpriteInstance i, bool visible)
+void RenderWorld::spriteSetVisible(SpriteInstance i, bool visible)
 {
 	RIO_ASSERT(i.i < spriteManager.data.size, "Index out of bounds");
 }
 
-void RenderWorld::setSpriteFrame(SpriteInstance i, uint32_t index)
+void RenderWorld::spriteSetFrame(SpriteInstance i, uint32_t index)
 {
 	RIO_ASSERT(i.i < spriteManager.data.size, "Index out of bounds");
 	spriteManager.data.frame[i.i] = index;
 }
 
-LightInstance RenderWorld::createLight(UnitId id, const LightDesc& lightDesc, const Matrix4x4& transform)
+LightInstance RenderWorld::lightCreate(UnitId id, const LightDesc& lightDesc, const Matrix4x4& transform)
 {
 	return lightManager.create(id, lightDesc, transform);
 }
 
-void RenderWorld::destroyLight(LightInstance i)
+void RenderWorld::lightDestroy(LightInstance i)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	lightManager.destroy(i);
 }
 
-LightInstance RenderWorld::getLight(UnitId id)
+LightInstance RenderWorld::lightGet(UnitId id)
 {
 	return lightManager.getLight(id);
 }
 
-Color4 RenderWorld::getLightColor(LightInstance i)
+Color4 RenderWorld::lightGetColor(LightInstance i)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	return lightManager.data.color[i.i];
 }
 
-LightType::Enum RenderWorld::getLightType(LightInstance i)
+LightType::Enum RenderWorld::lightGetType(LightInstance i)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	return (LightType::Enum)lightManager.data.type[i.i];
 }
 
-float RenderWorld::getLightRange(LightInstance i)
+float RenderWorld::lightGetRange(LightInstance i)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	return lightManager.data.range[i.i];
 }
 
-float RenderWorld::getLightIntensity(LightInstance i)
+float RenderWorld::lightGetIntensity(LightInstance i)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	return lightManager.data.intensity[i.i];
 }
 
-float RenderWorld::getLightSpotAngle(LightInstance i)
+float RenderWorld::lightGetSpotAngle(LightInstance i)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	return lightManager.data.spotAngle[i.i];
 }
 
-void RenderWorld::setLightColor(LightInstance i, const Color4& color)
+void RenderWorld::lightSetColor(LightInstance i, const Color4& color)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	lightManager.data.color[i.i] = color;
 }
 
-void RenderWorld::setLightType(LightInstance i, LightType::Enum type)
+void RenderWorld::lightSetType(LightInstance i, LightType::Enum type)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	lightManager.data.type[i.i] = type;
 }
 
-void RenderWorld::setLightRange(LightInstance i, float range)
+void RenderWorld::lightSetRange(LightInstance i, float range)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	lightManager.data.range[i.i] = range;
 }
 
-void RenderWorld::setLightIntensity(LightInstance i, float intensity)
+void RenderWorld::lightSetIntensity(LightInstance i, float intensity)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	lightManager.data.intensity[i.i] = intensity;
 }
 
-void RenderWorld::setLightSpotAngle(LightInstance i, float angle)
+void RenderWorld::lightSetSpotAngle(LightInstance i, float angle)
 {
 	RIO_ASSERT(i.i < lightManager.data.size, "Index out of bounds");
 	lightManager.data.spotAngle[i.i] = angle;
@@ -241,7 +245,7 @@ void RenderWorld::updateTransforms(const UnitId* begin, const UnitId* end, const
 
 		if (spriteManager.has(*begin) == true)
 		{
-			SpriteInstance spriteInstance = spriteManager.getFirst(*begin);
+			SpriteInstance spriteInstance = spriteManager.getSprite(*begin);
 			spriteInstanceData.world[spriteInstance.i] = *world;
 		}
 
@@ -290,7 +294,44 @@ void RenderWorld::render(const Matrix4x4& view, const Matrix4x4& projection)
 	}
 }
 
-void RenderWorld::drawDebug(DebugLine& debugLine)
+void RenderWorld::lightDebugDraw(LightInstance i, DebugLine& debugLine)
+{
+	LightManager::LightInstanceData& lightInstanceData = lightManager.data;
+
+	const Vector3 position = getTranslation(lightInstanceData.world[i.i]);
+	const Vector3 direction = -getAxisZ(lightInstanceData.world[i.i]);
+
+	switch (lightInstanceData.type[i.i])
+	{
+	case LightType::DIRECTIONAL:
+	{
+		const Vector3 end = position + direction * 3.0f;
+		debugLine.addLine(position, end, COLOR4_YELLOW);
+		debugLine.addCone(position + direction * 2.8f, end, 0.1f, COLOR4_YELLOW);
+	}
+	break;
+	case LightType::OMNI:
+	{
+		debugLine.addSphere(position, lightInstanceData.range[i.i], COLOR4_YELLOW);
+	}
+	break;
+	case LightType::SPOT:
+	{
+		const float angle = lightInstanceData.spotAngle[i.i];
+		const float range = lightInstanceData.range[i.i];
+		const float radius = tan(angle)*range;
+		debugLine.addCone(position + range * direction, position, radius, COLOR4_YELLOW);
+	}
+	break;
+	default:
+	{
+		RIO_FATAL("Unknown light type");
+	}
+	break;
+	}
+}
+
+void RenderWorld::debugDraw(DebugLine& debugLine)
 {
 	if (!isDebugDrawing)
 	{
@@ -310,40 +351,7 @@ void RenderWorld::drawDebug(DebugLine& debugLine)
 
 	for (uint32_t i = 0; i < lightInstanceData.size; ++i)
 	{
-		const Vector3 position = getTranslation(lightInstanceData.world[i]);
-		const Vector3 direction = -getAxisZ(lightInstanceData.world[i]);
-
-		// Draw tiny sphere for all light types
-		debugLine.addSphere(position, 0.1f, lightInstanceData.color[i]);
-
-		switch (lightInstanceData.type[i])
-		{
-			case LightType::DIRECTIONAL:
-			{
-				const Vector3 end = position + direction*3.0f;
-				debugLine.addLine(position, end, COLOR4_YELLOW);
-				debugLine.addCone(position + direction*2.8f, end, 0.1f, COLOR4_YELLOW);
-				break;
-			}
-			case LightType::OMNI:
-			{
-				debugLine.addSphere(position, lightInstanceData.range[i], COLOR4_YELLOW);
-				break;
-			}
-			case LightType::SPOT:
-			{
-				const float angle = lightInstanceData.spotAngle[i];
-				const float range = lightInstanceData.range[i];
-				const float radius = tan(angle)*range;
-				debugLine.addCone(position + range*direction, position, radius, COLOR4_YELLOW);
-				break;
-			}
-			default:
-			{
-				RIO_ASSERT(false, "Bad light type");
-				break;
-			}
-		}
+		lightDebugDraw({ i }, debugLine);
 	}
 }
 
@@ -361,29 +369,26 @@ void RenderWorld::unitDestroyedCallback(UnitId id)
 		while (meshManager.getIsValid(current) == true)
 		{
 			next = meshManager.getNext(current);
-			destroyMesh(current);
+			meshDestroy(current);
 			current = next;
 		}
 	}
 
 	{
-		SpriteInstance current = spriteManager.getFirst(id);
-		SpriteInstance next;
+		SpriteInstance firstSprite = spriteGet(id);
 
-		while (spriteManager.getIsValid(current))
+		if (spriteManager.getIsValid(firstSprite))
 		{
-			next = spriteManager.getNext(current);
-			destroySprite(current);
-			current = next;
+			spriteDestroy(firstSprite);
 		}
 	}
 
 	{
-		LightInstance first = getLight(id);
+		LightInstance first = lightGet(id);
 
 		if (lightManager.getIsValid(first))
 		{
-			destroyLight(first);
+			lightDestroy(first);
 		}
 	}
 }
@@ -392,16 +397,16 @@ void RenderWorld::MeshManager::allocate(uint32_t meshInstancesCount)
 {
 	RIO_ENSURE(num > this->data.size);
 
-	const uint32_t bytes = meshInstancesCount * (0
-		+ sizeof(UnitId)
-		+ sizeof(MeshResource*)
-		+ sizeof(MeshGeometry*)
-		+ sizeof(MeshData)
-		+ sizeof(StringId64)
-		+ sizeof(Matrix4x4)
-		+ sizeof(Obb)
-		+ sizeof(MeshInstance)
-		);
+	const uint32_t bytes = 0
+		+ meshInstancesCount * sizeof(UnitId) + alignof(UnitId)
+		+ meshInstancesCount * sizeof(MeshResource*) + alignof(MeshResource*)
+		+ meshInstancesCount * sizeof(MeshGeometry*) + alignof(MeshGeometry*)
+		+ meshInstancesCount * sizeof(MeshData) + alignof(MeshData)
+		+ meshInstancesCount * sizeof(StringId64) + alignof(StringId64)
+		+ meshInstancesCount * sizeof(Matrix4x4) + alignof(Matrix4x4)
+		+ meshInstancesCount * sizeof(Obb) + alignof(Obb)
+		+ meshInstancesCount * sizeof(MeshInstance) + alignof(MeshInstance)
+		;
 
 	MeshInstanceData newMeshInstanceData;
 	newMeshInstanceData.size = this->data.size;
@@ -410,13 +415,14 @@ void RenderWorld::MeshManager::allocate(uint32_t meshInstancesCount)
 	newMeshInstanceData.firstHidden = this->data.firstHidden;
 
 	newMeshInstanceData.unit = (UnitId*)(newMeshInstanceData.buffer);
-	newMeshInstanceData.resource = (const MeshResource**)(newMeshInstanceData.unit + meshInstancesCount);
-	newMeshInstanceData.geometry = (const MeshGeometry**)(newMeshInstanceData.resource + meshInstancesCount);
-	newMeshInstanceData.mesh = (MeshData*)(newMeshInstanceData.geometry + meshInstancesCount);
-	newMeshInstanceData.material = (StringId64*)(newMeshInstanceData.mesh + meshInstancesCount);
-	newMeshInstanceData.world = (Matrix4x4*)(newMeshInstanceData.material + meshInstancesCount);
-	newMeshInstanceData.obb = (Obb*)(newMeshInstanceData.world + meshInstancesCount);
-	newMeshInstanceData.nextInstance = (MeshInstance*)(newMeshInstanceData.obb + meshInstancesCount);
+
+	newMeshInstanceData.resource = (const MeshResource**)MemoryFn::alignTop(newMeshInstanceData.unit + meshInstancesCount, alignof(const MeshResource*));
+	newMeshInstanceData.geometry = (const MeshGeometry**)MemoryFn::alignTop(newMeshInstanceData.resource + meshInstancesCount, alignof(const MeshGeometry*));
+	newMeshInstanceData.mesh = (MeshData*)MemoryFn::alignTop(newMeshInstanceData.geometry + meshInstancesCount, alignof(MeshData));
+	newMeshInstanceData.material = (StringId64*)MemoryFn::alignTop(newMeshInstanceData.mesh + meshInstancesCount, alignof(StringId64));
+	newMeshInstanceData.world = (Matrix4x4*)MemoryFn::alignTop(newMeshInstanceData.material + meshInstancesCount, alignof(Matrix4x4));
+	newMeshInstanceData.obb = (Obb*)MemoryFn::alignTop(newMeshInstanceData.world + meshInstancesCount, alignof(Obb));
+	newMeshInstanceData.nextInstance = (MeshInstance*)MemoryFn::alignTop(newMeshInstanceData.obb + meshInstancesCount, alignof(MeshInstance));
 
 	memcpy(newMeshInstanceData.unit, this->data.unit, this->data.size * sizeof(UnitId));
 	memcpy(newMeshInstanceData.resource, this->data.resource, this->data.size * sizeof(MeshResource*));
@@ -599,16 +605,16 @@ void RenderWorld::SpriteManager::allocate(uint32_t spriteInstancesCount)
 {
 	RIO_ENSURE(spriteInstancesCount > this->data.size);
 
-	const uint32_t bytes = spriteInstancesCount * (0
-		+ sizeof(UnitId)
-		+ sizeof(SpriteResource**)
-		+ sizeof(SpriteData)
-		+ sizeof(StringId64)
-		+ sizeof(uint32_t)
-		+ sizeof(Matrix4x4)
-		+ sizeof(Aabb)
-		+ sizeof(SpriteInstance)
-		);
+	const uint32_t bytes = 0
+		+ spriteInstancesCount + sizeof(UnitId) + alignof(UnitId)
+		+ spriteInstancesCount + sizeof(SpriteResource**) + alignof(SpriteResource*)
+		+ spriteInstancesCount + sizeof(SpriteData) + alignof(SpriteData)
+		+ spriteInstancesCount + sizeof(StringId64) + alignof(StringId64)
+		+ spriteInstancesCount + sizeof(uint32_t) + alignof(uint32_t)
+		+ spriteInstancesCount + sizeof(Matrix4x4) + alignof(Matrix4x4)
+		+ spriteInstancesCount + sizeof(Aabb) + alignof(Aabb)
+		+ spriteInstancesCount + sizeof(SpriteInstance) + alignof(SpriteInstance)
+		;
 
 	SpriteInstanceData newSpriteInstanceData;
 	newSpriteInstanceData.size = this->data.size;
@@ -617,13 +623,13 @@ void RenderWorld::SpriteManager::allocate(uint32_t spriteInstancesCount)
 	newSpriteInstanceData.firstHidden = this->data.firstHidden;
 
 	newSpriteInstanceData.unit = (UnitId*)(newSpriteInstanceData.buffer);
-	newSpriteInstanceData.resource = (const SpriteResource**)(newSpriteInstanceData.unit + spriteInstancesCount);
-	newSpriteInstanceData.sprite = (SpriteData*)(newSpriteInstanceData.resource + spriteInstancesCount);
-	newSpriteInstanceData.material = (StringId64*)(newSpriteInstanceData.sprite + spriteInstancesCount);
-	newSpriteInstanceData.frame = (uint32_t*)(newSpriteInstanceData.material + spriteInstancesCount);
-	newSpriteInstanceData.world = (Matrix4x4*)(newSpriteInstanceData.frame + spriteInstancesCount);
-	newSpriteInstanceData.aabb = (Aabb*)(newSpriteInstanceData.world + spriteInstancesCount);
-	newSpriteInstanceData.nextInstance = (SpriteInstance*)(newSpriteInstanceData.aabb + spriteInstancesCount);
+	newSpriteInstanceData.resource = (const SpriteResource**)MemoryFn::alignTop(newSpriteInstanceData.unit + spriteInstancesCount, alignof(const SpriteResource*));
+	newSpriteInstanceData.sprite = (SpriteData*)MemoryFn::alignTop(newSpriteInstanceData.resource + spriteInstancesCount, alignof(SpriteData));
+	newSpriteInstanceData.material = (StringId64*)MemoryFn::alignTop(newSpriteInstanceData.sprite + spriteInstancesCount, alignof(StringId64));
+	newSpriteInstanceData.frame = (uint32_t*)MemoryFn::alignTop(newSpriteInstanceData.material + spriteInstancesCount, alignof(uint32_t));
+	newSpriteInstanceData.world = (Matrix4x4*)MemoryFn::alignTop(newSpriteInstanceData.frame + spriteInstancesCount, alignof(Matrix4x4));
+	newSpriteInstanceData.aabb = (Aabb*)MemoryFn::alignTop(newSpriteInstanceData.world + spriteInstancesCount, alignof(Aabb));
+	newSpriteInstanceData.nextInstance = (SpriteInstance*)MemoryFn::alignTop(newSpriteInstanceData.aabb + spriteInstancesCount, alignof(SpriteInstance));
 
 	memcpy(newSpriteInstanceData.unit, this->data.unit, this->data.size * sizeof(UnitId));
 	memcpy(newSpriteInstanceData.resource, this->data.resource, this->data.size * sizeof(SpriteResource**));
@@ -665,15 +671,7 @@ SpriteInstance RenderWorld::SpriteManager::create(UnitId id, const SpriteResourc
 	++this->data.size;
 	++this->data.firstHidden;
 
-	SpriteInstance current = getFirst(id);
-	if (!getIsValid(current))
-	{
-		HashMapFn::set(unitIdToSpriteMap, id, last);
-	}
-	else
-	{
-		addNode(current, makeInstance(last));
-	}
+	HashMapFn::set(unitIdToSpriteMap, id, last);
 
 	return makeInstance(last);
 }
@@ -684,11 +682,7 @@ void RenderWorld::SpriteManager::destroy(SpriteInstance i)
 
 	const uint32_t last = this->data.size - 1;
 	const UnitId unitId = this->data.unit[i.i];
-	const SpriteInstance firstSpriteInstance = getFirst(unitId);
-	const SpriteInstance lastSpriteInstance = makeInstance(last);
-
-	swapNode(lastSpriteInstance, i);
-	removeNode(firstSpriteInstance, i);
+	const UnitId lastUnitId = this->data.unit[last];
 
 	this->data.unit[i.i] = this->data.unit[last];
 	this->data.resource[i.i] = this->data.resource[last];
@@ -702,98 +696,19 @@ void RenderWorld::SpriteManager::destroy(SpriteInstance i)
 
 	--this->data.size;
 	--this->data.firstHidden;
+
+	HashMapFn::set(unitIdToSpriteMap, lastUnitId, i.i);
+	HashMapFn::remove(unitIdToSpriteMap, unitId);
 }
 
 bool RenderWorld::SpriteManager::has(UnitId id)
 {
-	return getIsValid(getFirst(id));
+	return getIsValid(getSprite(id));
 }
 
-SpriteInstance RenderWorld::SpriteManager::getFirst(UnitId id)
+SpriteInstance RenderWorld::SpriteManager::getSprite(UnitId id)
 {
 	return makeInstance(HashMapFn::get(unitIdToSpriteMap, id, UINT32_MAX));
-}
-
-SpriteInstance RenderWorld::SpriteManager::getNext(SpriteInstance i)
-{
-	RIO_ASSERT(i.i < this->data.size, "Index out of bounds");
-	return this->data.nextInstance[i.i];
-}
-
-SpriteInstance RenderWorld::SpriteManager::getPrev(SpriteInstance i)
-{
-	RIO_ASSERT(i.i < this->data.size, "Index out of bounds");
-
-	const UnitId unitId = this->data.unit[i.i];
-
-	SpriteInstance current = getFirst(unitId);
-	SpriteInstance prev = { UINT32_MAX };
-
-	while (current.i != i.i)
-	{
-		prev = current;
-		current = getNext(current);
-	}
-
-	return prev;
-}
-
-void RenderWorld::SpriteManager::addNode(SpriteInstance first, SpriteInstance i)
-{
-	RIO_ASSERT(first.i < this->data.size, "Index out of bounds");
-	RIO_ASSERT(i.i < this->data.size, "Index out of bounds");
-
-	SpriteInstance current = first;
-	while (getIsValid(getNext(current)))
-	{
-		current = getNext(current);
-	}
-
-	this->data.nextInstance[current.i] = i;
-}
-
-void RenderWorld::SpriteManager::removeNode(SpriteInstance first, SpriteInstance i)
-{
-	RIO_ASSERT(first.i < this->data.size, "Index out of bounds");
-	RIO_ASSERT(i.i < this->data.size, "Index out of bounds");
-
-	const UnitId unitId = this->data.unit[first.i];
-
-	if (i.i == first.i)
-	{
-		if (!getIsValid(getNext(i)))
-		{
-			HashMapFn::set(unitIdToSpriteMap, unitId, UINT32_MAX);
-		}
-		else
-		{
-			HashMapFn::set(unitIdToSpriteMap, unitId, getNext(i).i);
-		}
-	}
-	else
-	{
-		SpriteInstance prev = getPrev(i);
-		this->data.nextInstance[prev.i] = getNext(i);
-	}
-}
-
-void RenderWorld::SpriteManager::swapNode(SpriteInstance a, SpriteInstance b)
-{
-	RIO_ASSERT(a.i < this->data.size, "Index out of bounds");
-	RIO_ASSERT(b.i < this->data.size, "Index out of bounds");
-
-	const UnitId unitId = this->data.unit[a.i];
-	const SpriteInstance firstSpriteInstance = getFirst(unitId);
-
-	if (a.i == firstSpriteInstance.i)
-	{
-		HashMapFn::set(unitIdToSpriteMap, unitId, b.i);
-	}
-	else
-	{
-		const SpriteInstance prevA = getPrev(a);
-		this->data.nextInstance[prevA.i] = b;
-	}
 }
 
 void RenderWorld::SpriteManager::destroy()
@@ -805,15 +720,15 @@ void RenderWorld::LightManager::allocate(uint32_t lightInstancesCount)
 {
 	RIO_ENSURE(lightInstancesCount > this->data.size);
 
-	const uint32_t bytes = lightInstancesCount * (0
-		+ sizeof(UnitId)
-		+ sizeof(Matrix4x4)
-		+ sizeof(float)
-		+ sizeof(float)
-		+ sizeof(float)
-		+ sizeof(Color4)
-		+ sizeof(uint32_t)
-		);
+	const uint32_t bytes = 0
+		+ lightInstancesCount * sizeof(UnitId) + alignof(UnitId)
+		+ lightInstancesCount * sizeof(Matrix4x4) + alignof(Matrix4x4)
+		+ lightInstancesCount * sizeof(float) + alignof(float)
+		+ lightInstancesCount * sizeof(float) + alignof(float)
+		+ lightInstancesCount * sizeof(float) + alignof(float)
+		+ lightInstancesCount * sizeof(Color4) + alignof(Color4)
+		+ lightInstancesCount * sizeof(uint32_t) + alignof(uint32_t)
+		;
 
 	LightInstanceData newLightInstanceData;
 	newLightInstanceData.size = this->data.size;
@@ -821,12 +736,12 @@ void RenderWorld::LightManager::allocate(uint32_t lightInstancesCount)
 	newLightInstanceData.buffer = allocator->allocate(bytes);
 
 	newLightInstanceData.unit = (UnitId*)(newLightInstanceData.buffer);
-	newLightInstanceData.world = (Matrix4x4*)(newLightInstanceData.unit + lightInstancesCount);
-	newLightInstanceData.range = (float*)(newLightInstanceData.world + lightInstancesCount);
-	newLightInstanceData.intensity = (float*)(newLightInstanceData.range + lightInstancesCount);
-	newLightInstanceData.spotAngle = (float*)(newLightInstanceData.intensity + lightInstancesCount);
-	newLightInstanceData.color = (Color4*)(newLightInstanceData.spotAngle + lightInstancesCount);
-	newLightInstanceData.type = (uint32_t*)(newLightInstanceData.color + lightInstancesCount);
+	newLightInstanceData.world = (Matrix4x4*)MemoryFn::alignTop(newLightInstanceData.unit + lightInstancesCount, alignof(Matrix4x4));
+	newLightInstanceData.range = (float*)MemoryFn::alignTop(newLightInstanceData.world + lightInstancesCount, alignof(float));
+	newLightInstanceData.intensity = (float*)MemoryFn::alignTop(newLightInstanceData.range + lightInstancesCount, alignof(float));
+	newLightInstanceData.spotAngle = (float*)MemoryFn::alignTop(newLightInstanceData.intensity + lightInstancesCount, alignof(float));
+	newLightInstanceData.color = (Color4*)MemoryFn::alignTop(newLightInstanceData.spotAngle + lightInstancesCount, alignof(Color4));
+	newLightInstanceData.type = (uint32_t*)MemoryFn::alignTop(newLightInstanceData.color + lightInstancesCount, alignof(uint32_t));
 
 	memcpy(newLightInstanceData.unit, this->data.unit, this->data.size * sizeof(UnitId));
 	memcpy(newLightInstanceData.world, this->data.world, this->data.size * sizeof(Matrix4x4));

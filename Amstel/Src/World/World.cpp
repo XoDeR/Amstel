@@ -11,7 +11,7 @@
 #include "Resource/ResourceManager.h"
 #include "Resource/UnitResource.h"
 
-#include "World/Gui.h"
+#include "World/DebugGui.h"
 #include "World/DebugLine.h"
 #include "World/Level.h"
 #include "World/PhysicsWorld.h"
@@ -26,7 +26,7 @@ namespace Rio
 {
 
 World::World(Allocator& a, ResourceManager& resourceManager, ShaderManager& shaderManager, MaterialManager& materialManager, UnitManager& unitManager, ScriptEnvironment& ScriptEnvironment)
-	: marker(MARKER)
+	: marker(WORLD_MARKER)
 	, allocator(&a)
 	, resourceManager(&resourceManager)
 	, shaderManager(&shaderManager)
@@ -124,35 +124,29 @@ void World::updateScene(float dt)
 	uint32_t read = 0;
 	while (read < size)
 	{
-		EventStreamFn::Header header;
+		const EventHeader* eventHeader = (EventHeader*)&physicsEventStream[read];
+		const char* data = (char*)&eventHeader[1];
 
-		const char* data = &physicsEventStream[read];
-		const char* ev  = data + sizeof(header);
+		read += sizeof(eventHeader) + eventHeader->size;
 
-		header = *(EventStreamFn::Header*)data;
-
-		switch (header.type)
+		switch (eventHeader->type)
 		{
-			case EventType::PHYSICS_TRANSFORM:
-			{
-				const PhysicsTransformEvent& physicsTransformEvent = *(PhysicsTransformEvent*)ev;
-				const TransformInstance transformInstance = sceneGraph->get(physicsTransformEvent.unitId);
-				const Matrix4x4 pose = createMatrix4x4(physicsTransformEvent.rotation, physicsTransformEvent.position);
-				sceneGraph->setWorldPose(transformInstance, pose);
-				break;
-			}
-			case EventType::PHYSICS_COLLISION:
-			{
-				break;
-			}
-			case EventType::PHYSICS_TRIGGER:
-			{
-				break;
-			}
+		case EventType::PHYSICS_TRANSFORM:
+		{
+			const PhysicsTransformEvent& physicsTransformEvent = *(PhysicsTransformEvent*)data;
+			const TransformInstance transformInstance = sceneGraph->get(physicsTransformEvent.unitId);
+			const Matrix4x4 pose = createMatrix4x4(physicsTransformEvent.rotation, physicsTransformEvent.position);
+			sceneGraph->setWorldPose(transformInstance, pose);
 		}
-
-		read += sizeof(header);
-		read += header.size;
+		break;
+		case EventType::PHYSICS_COLLISION:
+			break;
+		case EventType::PHYSICS_TRIGGER:
+			break;
+		default:
+			RIO_FATAL("Unknown event type");
+			break;
+		}
 	}
 	ArrayFn::clear(physicsEventStream);
 
@@ -178,20 +172,18 @@ void World::update(float dt)
 	updateScene(dt);
 }
 
-void World::render(CameraInstance i)
+void World::render(const Matrix4x4& view, const Matrix4x4& projection)
 {
-	const Camera& camera = cameraList[i.i];
+	renderWorld->render(view, projection);
 
-	renderWorld->render(getCameraViewMatrix(i), camera.projection);
-
-	physicsWorld->drawDebug();
-	renderWorld->drawDebug(*debugLine);
+	physicsWorld->debugDraw();
+	renderWorld->debugDraw(*debugLine);
 
 	debugLine->submit();
 	debugLine->reset();
 }
 
-CameraInstance World::createCamera(UnitId id, const CameraDesc& cameraDesc)
+CameraInstance World::cameraCreate(UnitId id, const CameraDesc& cameraDesc, const Matrix4x4& /*transformMatrix4x4*/)
 {
 	Camera camera;
 	camera.unit = id;
@@ -207,7 +199,7 @@ CameraInstance World::createCamera(UnitId id, const CameraDesc& cameraDesc)
 	return makeCameraInstance(last);
 }
 
-void World::destroyCamera(CameraInstance i)
+void World::cameraDestroy(CameraInstance i)
 {
 	const uint32_t last = ArrayFn::getCount(cameraList) - 1;
 	const UnitId unitId = cameraList[i.i].unit;
@@ -219,28 +211,28 @@ void World::destroyCamera(CameraInstance i)
 	HashMapFn::remove(cameraMap, unitId);
 }
 
-CameraInstance World::getCamera(UnitId id)
+CameraInstance World::cameraGet(UnitId id)
 {
 	return makeCameraInstance(HashMapFn::get(cameraMap, id, UINT32_MAX));
 }
 
-void World::setCameraProjectionType(CameraInstance i, ProjectionType::Enum type)
+void World::cameraSetProjectionType(CameraInstance i, ProjectionType::Enum type)
 {
 	cameraList[i.i].projectionType = type;
 	cameraList[i.i].updateProjectionMatrix();
 }
 
-ProjectionType::Enum World::getCameraProjectionType(CameraInstance i) const
+ProjectionType::Enum World::cameraGetProjectionType(CameraInstance i) const
 {
 	return cameraList[i.i].projectionType;
 }
 
-const Matrix4x4& World::getCameraProjectionMatrix(CameraInstance i) const
+const Matrix4x4& World::cameraGetProjectionMatrix(CameraInstance i) const
 {
 	return cameraList[i.i].projection;
 }
 
-Matrix4x4 World::getCameraViewMatrix(CameraInstance i) const
+Matrix4x4 World::cameraGetViewMatrix(CameraInstance i) const
 {
 	const TransformInstance transformInstance = sceneGraph->get(cameraList[i.i].unit);
 	Matrix4x4 view = sceneGraph->getWorldPose(transformInstance);
@@ -248,51 +240,46 @@ Matrix4x4 World::getCameraViewMatrix(CameraInstance i) const
 	return view;
 }
 
-float World::getCameraFov(CameraInstance i) const
+float World::cameraGetFov(CameraInstance i) const
 {
 	return cameraList[i.i].fov;
 }
 
-void World::setCameraFov(CameraInstance i, float fov)
+void World::cameraSetFov(CameraInstance i, float fov)
 {
 	cameraList[i.i].fov = fov;
 	cameraList[i.i].updateProjectionMatrix();
 }
 
-float World::getCameraAspect(CameraInstance i) const
-{
-	return cameraList[i.i].aspect;
-}
-
-void World::setCameraAspect(CameraInstance i, float aspect)
+void World::cameraSetAspect(CameraInstance i, float aspect)
 {
 	cameraList[i.i].aspect = aspect;
 	cameraList[i.i].updateProjectionMatrix();
 }
 
-float World::getCameraNearClipDistance(CameraInstance i) const
+float World::cameraGetNearClipDistance(CameraInstance i) const
 {
 	return cameraList[i.i].near;
 }
 
-void World::setCameraNearClipDistance(CameraInstance i, float near)
+void World::cameraSetNearClipDistance(CameraInstance i, float near)
 {
 	cameraList[i.i].near = near;
 	cameraList[i.i].updateProjectionMatrix();
 }
 
-float World::getCameraFarClipDistance(CameraInstance i) const
+float World::cameraGetFarClipDistance(CameraInstance i) const
 {
 	return cameraList[i.i].far;
 }
 
-void World::setCameraFarClipDistance(CameraInstance i, float far)
+void World::cameraSetFarClipDistance(CameraInstance i, float far)
 {
 	cameraList[i.i].far = far;
 	cameraList[i.i].updateProjectionMatrix();
 }
 
-void World::setCameraOrthographicMetrics(CameraInstance i, float left, float right, float bottom, float top)
+void World::cameraSetOrthographicMetrics(CameraInstance i, float left, float right, float bottom, float top)
 {
 	cameraList[i.i].left = left;
 	cameraList[i.i].right = right;
@@ -302,7 +289,7 @@ void World::setCameraOrthographicMetrics(CameraInstance i, float left, float rig
 	cameraList[i.i].updateProjectionMatrix();
 }
 
-void World::setCameraViewportMetrics(CameraInstance i, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
+void World::cameraSetViewportMetrics(CameraInstance i, uint16_t x, uint16_t y, uint16_t width, uint16_t height)
 {
 	cameraList[i.i].viewX = x;
 	cameraList[i.i].viewY = y;
@@ -310,7 +297,7 @@ void World::setCameraViewportMetrics(CameraInstance i, uint16_t x, uint16_t y, u
 	cameraList[i.i].viewHeight = height;
 }
 
-Vector3 World::getCameraWorldFromScreen(CameraInstance i, const Vector3& position)
+Vector3 World::cameraGetWorldFromScreen(CameraInstance i, const Vector3& position)
 {
 	const Camera& camera = cameraList[i.i];
 
@@ -334,7 +321,7 @@ Vector3 World::getCameraWorldFromScreen(CameraInstance i, const Vector3& positio
 	return createVector3(tmp.x, tmp.y, tmp.z);
 }
 
-Vector3 World::getCameraScreenFromWorld(CameraInstance i, const Vector3& position)
+Vector3 World::cameraGetScreenFromWorld(CameraInstance i, const Vector3& position)
 {
 	const Camera& camera = cameraList[i.i];
 
@@ -379,9 +366,9 @@ void World::stopSound(SoundInstanceId id)
 	soundWorld->stop(id);
 }
 
-void World::linkSound(SoundInstanceId /*id*/, UnitId /*unit*/, int32_t /*node*/)
+void World::linkSound(SoundInstanceId /*soundInstanceId*/, UnitId /*unitId*/, int32_t /*node*/)
 {
-	RIO_ASSERT(false, "Not implemented yet");
+	RIO_FATAL("Not implemented yet");
 }
 
 void World::setListenerPose(const Matrix4x4& pose)
@@ -414,20 +401,23 @@ void World::destroyDebugLine(DebugLine& line)
 	RIO_DELETE(*allocator, &line);
 }
 
-Gui* World::createScreenGui(float scaleWidth, float scaleHeight)
+DebugGui* World::createScreenDebugGui(float scaleWidth, float scaleHeight)
 {
 	// TODO use scaleWidth and scaleHeight
-	return RIO_NEW(*allocator, Gui)(*resourceManager
+	scaleWidth = 1280.0f;
+	scaleHeight = 720.0f;
+
+	return RIO_NEW(*allocator, DebugGui)(*resourceManager
 		, *shaderManager
 		, *materialManager
-		, 1280
-		, 720
+		, scaleWidth
+		, scaleHeight
 		);
 }
 
-void World::destroyGui(Gui& gui)
+void World::destroyGui(DebugGui& debugGui)
 {
-	RIO_DELETE(*allocator, &gui);
+	RIO_DELETE(*allocator, &debugGui);
 }
 
 Level* World::loadLevel(StringId64 name, const Vector3& position, const Quaternion& rotation)
@@ -502,8 +492,8 @@ void World::Camera::updateProjectionMatrix()
 				, near
 				, far
 				);
-			break;
 		}
+		break;
 		case ProjectionType::PERSPECTIVE:
 		{
 			setToPerspective(projection
@@ -512,13 +502,13 @@ void World::Camera::updateProjectionMatrix()
 				, near
 				, far
 				);
-			break;
 		}
+		break;
 		default:
 		{
 			RIO_FATAL("Error: unknown projection type");
-			break;
 		}
+		break;
 	}
 }
 
@@ -553,7 +543,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			const CameraDesc* cameraDesc = (const CameraDesc*)data;
 			for (uint32_t i = 0; i < component->instancesCount; ++i, ++cameraDesc)
 			{
-				world.createCamera(unitLookupList[unitIndexList[i]], *cameraDesc);
+				world.cameraCreate(unitLookupList[unitIndexList[i]], *cameraDesc, MATRIX4X4_IDENTITY);
 			}
 		}
 		else if (component->type == COMPONENT_TYPE_COLLIDER)
@@ -561,7 +551,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			const ColliderDesc* colliderDesc = (const ColliderDesc*)data;
 			for (uint32_t i = 0; i < component->instancesCount; ++i)
 			{
-				physicsWorld->createCollider(unitLookupList[unitIndexList[i]], colliderDesc);
+				physicsWorld->colliderCreate(unitLookupList[unitIndexList[i]], colliderDesc);
 				colliderDesc = (ColliderDesc*)((char*)(colliderDesc + 1) + colliderDesc->size);
 			}
 		}
@@ -571,7 +561,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			for (uint32_t i = 0; i < component->instancesCount; ++i, ++actorResource)
 			{
 				Matrix4x4 transformMatrix = sceneGraph->getWorldPose(sceneGraph->get(unitLookupList[unitIndexList[i]]));
-				physicsWorld->createActor(unitLookupList[unitIndexList[i]], actorResource, transformMatrix);
+				physicsWorld->actorCreate(unitLookupList[unitIndexList[i]], actorResource, transformMatrix);
 			}
 		}
 		else if (component->type == COMPONENT_TYPE_CONTROLLER)
@@ -580,7 +570,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			for (uint32_t i = 0; i < component->instancesCount; ++i, ++controllerDesc)
 			{
 				Matrix4x4 transformMatrix = sceneGraph->getWorldPose(sceneGraph->get(unitLookupList[unitIndexList[i]]));
-				physicsWorld->createController(unitLookupList[unitIndexList[i]], *controllerDesc, transformMatrix);
+				physicsWorld->controllerCreate(unitLookupList[unitIndexList[i]], *controllerDesc, transformMatrix);
 			}
 		}
 		else if (component->type == COMPONENT_TYPE_MESH_RENDERER)
@@ -589,7 +579,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			for (uint32_t i = 0; i < component->instancesCount; ++i, ++meshRendererDesc)
 			{
 				Matrix4x4 transformMatrix = sceneGraph->getWorldPose(sceneGraph->get(unitLookupList[unitIndexList[i]]));
-				renderWorld->createMesh(unitLookupList[unitIndexList[i]], *meshRendererDesc, transformMatrix);
+				renderWorld->meshCreate(unitLookupList[unitIndexList[i]], *meshRendererDesc, transformMatrix);
 			}
 		}
 		else if (component->type == COMPONENT_TYPE_SPRITE_RENDERER)
@@ -598,7 +588,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			for (uint32_t i = 0; i < component->instancesCount; ++i, ++spriteRendererDesc)
 			{
 				Matrix4x4 transformMatrix = sceneGraph->getWorldPose(sceneGraph->get(unitLookupList[unitIndexList[i]]));
-				renderWorld->createSprite(unitLookupList[unitIndexList[i]], *spriteRendererDesc, transformMatrix);
+				renderWorld->spriteCreate(unitLookupList[unitIndexList[i]], *spriteRendererDesc, transformMatrix);
 			}
 		}
 		else if (component->type == COMPONENT_TYPE_LIGHT)
@@ -607,7 +597,7 @@ void spawnUnits(World& world, const UnitResource& unitResource, const Vector3& p
 			for (uint32_t i = 0; i < component->instancesCount; ++i, ++lightDesc)
 			{
 				Matrix4x4 transformMatrix = sceneGraph->getWorldPose(sceneGraph->get(unitLookupList[unitIndexList[i]]));
-				renderWorld->createLight(unitLookupList[unitIndexList[i]], *lightDesc, transformMatrix);
+				renderWorld->lightCreate(unitLookupList[unitIndexList[i]], *lightDesc, transformMatrix);
 			}
 		}
 		else

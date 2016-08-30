@@ -31,228 +31,232 @@ public:
 	{
 	}
 
-	virtual ColliderInstance createCollider(UnitId /*id*/, const ColliderDesc* /*colliderDesc*/)
+	virtual ColliderInstance colliderCreate(UnitId /*id*/, const ColliderDesc* /*colliderDesc*/) override
 	{
 		return makeColliderInstance(UINT32_MAX);
 	}
 
-	virtual ColliderInstance getFirstCollider(UnitId /*id*/)
+	virtual void colliderDestroy(ColliderInstance colliderInstance) override
+	{
+	}
+
+	virtual ColliderInstance colliderGetFirst(UnitId /*id*/) override
 	{
 		return makeColliderInstance(UINT32_MAX);
 	}
 
-	virtual ColliderInstance getNextCollider(ColliderInstance /*i*/)
+	virtual ColliderInstance colliderGetNext(ColliderInstance /*i*/) override
 	{
 		return makeColliderInstance(UINT32_MAX);
 	}
 
-	virtual ActorInstance createActor(UnitId /*id*/, const ActorResource* /*actorResource*/, const Matrix4x4& /*transformMatrix*/)
+	virtual ActorInstance actorCreate(UnitId /*id*/, const ActorResource* /*actorResource*/, const Matrix4x4& /*transformMatrix*/)
 	{
 		return makeActorInstance(UINT32_MAX);
 	}
 
-	virtual void destroyActor(ActorInstance /*i*/)
+	virtual void actorDestroy(ActorInstance /*i*/)
 	{
 	}
 
-	virtual ActorInstance getActor(UnitId /*id*/)
+	virtual ActorInstance actorGet(UnitId /*id*/)
 	{
 		return makeActorInstance(UINT32_MAX);
 	}
 
-	virtual Vector3 getActorWorldPosition(ActorInstance /*i*/) const
+	virtual Vector3 actorGetWorldPosition(ActorInstance /*i*/) const
 	{
 		return VECTOR3_ZERO;
 	}
 
-	virtual Quaternion getActorWorldRotation(ActorInstance /*i*/) const
+	virtual Quaternion actorGetWorldRotation(ActorInstance /*i*/) const
 	{
 		return QUATERNION_IDENTITY;
 	}
 
-	virtual Matrix4x4 getActorWorldPose(ActorInstance /*i*/) const
+	virtual Matrix4x4 actorGetWorldPose(ActorInstance /*i*/) const
 	{
 		return MATRIX4X4_IDENTITY;
 	}
 
-	virtual void teleportActorWorldPosition(ActorInstance /*i*/, const Vector3& /*p*/)
+	virtual void actorTeleportWorldPosition(ActorInstance /*i*/, const Vector3& /*p*/)
 	{
 	}
 
-	virtual void teleportActorWorldRotation(ActorInstance /*i*/, const Quaternion& /*r*/)
+	virtual void actorTeleportWorldRotation(ActorInstance /*i*/, const Quaternion& /*r*/)
 	{
 	}
 
-	virtual void teleportActorWorldPose(ActorInstance /*i*/, const Matrix4x4& /*m*/)
+	virtual void actorTeleportWorldPose(ActorInstance /*i*/, const Matrix4x4& /*m*/)
 	{
 	}
 
-	virtual Vector3 getActorCenterOfMass(ActorInstance /*i*/) const
+	virtual Vector3 actorGetCenterOfMass(ActorInstance /*i*/) const
 	{
 		return VECTOR3_ZERO;
 	}
 
-	virtual void enableActorGravity(ActorInstance /*i*/)
+	virtual void actorEnableGravity(ActorInstance /*i*/)
 	{
 	}
 
-	virtual void disableActorGravity(ActorInstance /*i*/)
+	virtual void actorDisableGravity(ActorInstance /*i*/)
 	{
 	}
 
-	virtual void enableActorCollision(ActorInstance /*i*/)
+	virtual void actorEnableCollision(ActorInstance /*i*/)
 	{
 	}
 
-	virtual void disableActorCollision(ActorInstance /*i*/)
+	virtual void actorDisableCollision(ActorInstance /*i*/)
 	{
 	}
 
-	virtual void setActorCollisionFilter(ActorInstance /*i*/, StringId32 /*filter*/)
+	virtual void actorSetCollisionFilter(ActorInstance /*i*/, StringId32 /*filter*/)
 	{
 	}
 
-	virtual void setActorKinematic(ActorInstance /*i*/, bool /*kinematic*/)
+	virtual void actorSetKinematic(ActorInstance /*i*/, bool /*kinematic*/)
 	{
 	}
 
-	virtual void moveActor(ActorInstance /*i*/, const Vector3& /*position*/)
+	virtual void actorMove(ActorInstance /*i*/, const Vector3& /*position*/)
 	{
 	}
 
-	virtual bool getIsStatic(ActorInstance /*i*/) const
-	{
-		return false;
-	}
-
-	virtual bool getIsDynamic(ActorInstance /*i*/) const
+	virtual bool actorGetIsStatic(ActorInstance /*i*/) const
 	{
 		return false;
 	}
 
-	virtual bool getIsKinematic(ActorInstance /*i*/) const
+	virtual bool actorGetIsDynamic(ActorInstance /*i*/) const
 	{
 		return false;
 	}
 
-	virtual bool getIsNonKinematic(ActorInstance /*i*/) const
+	virtual bool actorGetIsKinematic(ActorInstance /*i*/) const
 	{
 		return false;
 	}
 
-	virtual float getActorLinearDamping(ActorInstance /*i*/) const
+	virtual bool actorGetIsNonKinematic(ActorInstance /*i*/) const
+	{
+		return false;
+	}
+
+	virtual float actorGetLinearDamping(ActorInstance /*i*/) const
 	{
 		return 0.0f;
 	}
 
-	virtual void setActorLinearDamping(ActorInstance /*i*/, float /*rate*/)
+	virtual void actorSetLinearDamping(ActorInstance /*i*/, float /*rate*/)
 	{
 	}
 
-	virtual float getActorAngularDamping(ActorInstance /*i*/) const
+	virtual float actorGetAngularDamping(ActorInstance /*i*/) const
 	{
 		return 0.0f;
 	}
 
-	virtual void setActorAngularDamping(ActorInstance /*i*/, float /*rate*/)
+	virtual void actorSetAngularDamping(ActorInstance /*i*/, float /*rate*/)
 	{
 	}
 
-	virtual Vector3 getActorLinearVelocity(ActorInstance /*i*/) const
-	{
-		return VECTOR3_ZERO;
-	}
-
-	virtual void setActorLinearVelocity(ActorInstance /*i*/, const Vector3& /*velocity*/)
-	{
-	}
-
-	virtual Vector3 getActorAngularVelocity(ActorInstance /*i*/) const
+	virtual Vector3 actorGetLinearVelocity(ActorInstance /*i*/) const
 	{
 		return VECTOR3_ZERO;
 	}
 
-	virtual void setActorAngularVelocity(ActorInstance /*i*/, const Vector3& /*velocity*/)
+	virtual void actorSetLinearVelocity(ActorInstance /*i*/, const Vector3& /*velocity*/)
 	{
 	}
 
-	virtual void addActorImpulse(ActorInstance /*i*/, const Vector3& /*impulse*/)
+	virtual Vector3 actorGetAngularVelocity(ActorInstance /*i*/) const
+	{
+		return VECTOR3_ZERO;
+	}
+
+	virtual void actorSetAngularVelocity(ActorInstance /*i*/, const Vector3& /*velocity*/)
 	{
 	}
 
-	virtual void addActorImpulseAt(ActorInstance /*i*/, const Vector3& /*impulse*/, const Vector3& /*position*/)
+	virtual void actorAddImpulse(ActorInstance /*i*/, const Vector3& /*impulse*/)
 	{
 	}
 
-	virtual void addActorTorqueImpulse(ActorInstance /*i*/, const Vector3& /*impulse*/)
+	virtual void actorAddImpulseAt(ActorInstance /*i*/, const Vector3& /*impulse*/, const Vector3& /*position*/)
 	{
 	}
 
-	virtual void pushActor(ActorInstance /*i*/, const Vector3& /*velocity*/, float /*mass*/)
+	virtual void actorAddTorqueImpulse(ActorInstance /*i*/, const Vector3& /*impulse*/)
 	{
 	}
 
-	virtual void pushActorAt(ActorInstance /*i*/, const Vector3& /*velocity*/, float /*mass*/, const Vector3& /*position*/)
+	virtual void actorPush(ActorInstance /*i*/, const Vector3& /*velocity*/, float /*mass*/)
 	{
 	}
 
-	virtual bool getIsSleeping(ActorInstance /*i*/)
+	virtual void actorPushAt(ActorInstance /*i*/, const Vector3& /*velocity*/, float /*mass*/, const Vector3& /*position*/)
+	{
+	}
+
+	virtual bool actorGetIsSleeping(ActorInstance /*i*/)
 	{
 		return false;
 	}
 
-	virtual void wakeUp(ActorInstance /*i*/)
+	virtual void actorWakeUp(ActorInstance /*i*/)
 	{
 	}
 
-	virtual ControllerInstance createController(UnitId /*id*/, const ControllerDesc& /*controllerDesc*/, const Matrix4x4& /*transformMatrix*/)
+	virtual ControllerInstance controllerCreate(UnitId /*id*/, const ControllerDesc& /*controllerDesc*/, const Matrix4x4& /*transformMatrix*/)
 	{
 		return makeControllerInstance(UINT32_MAX);
 	}
 
-	virtual void destroyController(ControllerInstance /*id*/)
+	virtual void controllerDestroy(ControllerInstance /*id*/)
 	{
 	}
 
-	virtual ControllerInstance getController(UnitId /*id*/)
+	virtual ControllerInstance controllerGet(UnitId /*id*/)
 	{
 		return makeControllerInstance(UINT32_MAX);
 	}
 
-	virtual Vector3 getPosition(ControllerInstance /*i*/) const
+	virtual Vector3 controllerGetPosition(ControllerInstance /*i*/) const
 	{
 		return VECTOR3_ZERO;
 	}
 
-	virtual void moveController(ControllerInstance /*i*/, const Vector3& /*position*/)
+	virtual void controllerMove(ControllerInstance /*i*/, const Vector3& /*position*/)
 	{
 	}
 
-	virtual void setHeight(ControllerInstance /*i*/, float /*height*/)
+	virtual void controllerSetHeight(ControllerInstance /*i*/, float /*height*/)
 	{
 	}
 
-	virtual bool doesCollideUp(ControllerInstance /*i*/) const
-	{
-		return false;
-	}
-
-	virtual bool doesCollideDown(ControllerInstance /*i*/) const
+	virtual bool controllerDoesCollideUp(ControllerInstance /*i*/) const
 	{
 		return false;
 	}
 
-	virtual bool doesCollideSides(ControllerInstance /*i*/) const
+	virtual bool controllerDoesCollideDown(ControllerInstance /*i*/) const
 	{
 		return false;
 	}
 
-	virtual JointInstance createJoint(ActorInstance /*a0*/, ActorInstance /*a1*/, const JointDesc& /*jointDesc*/)
+	virtual bool controllerDoesCollideSides(ControllerInstance /*i*/) const
+	{
+		return false;
+	}
+
+	virtual JointInstance jointCreate(ActorInstance /*a0*/, ActorInstance /*a1*/, const JointDesc& /*jointDesc*/)
 	{
 		return makeJointInstance(UINT32_MAX);
 	}
 
-	virtual void destroyJoint(JointInstance /*i*/)
+	virtual void jointDestroy(JointInstance /*i*/)
 	{
 	}
 
@@ -282,7 +286,7 @@ public:
 		return eventStream;
 	}
 
-	virtual void drawDebug()
+	virtual void debugDraw() override
 	{
 	}
 

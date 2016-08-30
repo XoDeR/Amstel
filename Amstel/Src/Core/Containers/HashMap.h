@@ -105,8 +105,8 @@ namespace HashMapInternalFn
 				goto INSERT_AND_RETURN;
 			}
 
-			// If the existing element has probed less than us, then swap places with existing
-			// element, and keep going to find another slot for that element
+			// If the existing element has probed less than us, then swap places with existing element, 
+			// and keep going to find another slot for that element
 			uint32_t existingElementProbeDistance = getProbeDistance(m, m.hashList[hashIndex], hashIndex);
 			if (existingElementProbeDistance < distance)
 			{
@@ -114,7 +114,6 @@ namespace HashMapInternalFn
 				{
 					goto INSERT_AND_RETURN;
 				}
-
 				std::swap(hash, m.hashList[hashIndex]);
 				std::swap(key, m.data[hashIndex].pair.first);
 				std::swap(value, m.data[hashIndex].pair.second);

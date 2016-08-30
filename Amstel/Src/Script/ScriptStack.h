@@ -137,7 +137,11 @@ struct ScriptStack
 
 	uint32_t getId(int i)
 	{
+#if !RIO_RELEASE
+		return (uint32_t)luaL_checknumber(scriptState, i);
+#else
 		return (uint32_t)lua_tonumber(scriptState, i);
+#endif // !RIO_RELEASE
 	}
 
 	StringId32 getStringId32(int i)
@@ -153,6 +157,15 @@ struct ScriptStack
 	StringId64 getResourceId(int i)
 	{
 		return StringId64(getString(i));
+	}
+
+	DebugGui* getDebugGui(int i)
+	{
+		DebugGui* debugGui = (DebugGui*)getPointer(i);
+#if !RIO_RELEASE
+		checkType(i, debugGui);
+#endif // !RIO_RELEASE
+		return debugGui;
 	}
 
 	DebugLine* getDebugLine(int i)
@@ -214,7 +227,7 @@ struct ScriptStack
 		PhysicsWorld* physicsWorld = (PhysicsWorld*)getPointer(i);
 #if !RIO_RELEASE
 		// TODO
-		//if (*(uint32_t*)physicsWorld != PhysicsWorld::MARKER)
+		//if (*(uint32_t*)physicsWorld != PHYSICS_WORLD_MARKER)
 		//{
 		//	luaL_typerror(scriptState, i, "PhysicsWorld");
 		//}
@@ -227,7 +240,7 @@ struct ScriptStack
 		SoundWorld* soundWorld = (SoundWorld*)getPointer(i);
 #if !RIO_RELEASE
 		// TODO
-		//if (*(uint32_t*)soundWorld != SoundWorld::MARKER)
+		//if (*(uint32_t*)soundWorld != SOUND_WORLD_MARKER)
 		//{
 		//	luaL_typerror(scriptState, i, "SoundWorld");
 		//}
@@ -299,11 +312,6 @@ struct ScriptStack
 	SoundInstanceId getSoundInstanceId(int i)
 	{
 		return getId(i);
-	}
-
-	Gui* getGui(int i)
-	{
-		return (Gui*)getPointer(i);
 	}
 
 	Vector2 getVector2(int i)
@@ -472,6 +480,11 @@ struct ScriptStack
 		return lua_next(scriptState, i);
 	}
 
+	void pushDebugGui(DebugGui* debugGui)
+	{
+		pushPointer(debugGui);
+	}
+
 	void pushDebugLine(DebugLine* debugLine)
 	{
 		pushPointer(debugLine);
@@ -563,11 +576,6 @@ struct ScriptStack
 		pushId(soundInstanceId);
 	}
 
-	void pushGui(Gui* gui)
-	{
-		pushPointer(gui);
-	}
-
 	void pushVector2(const Vector2& vector2);
 	void pushVector3(const Vector3& vector3);
 	void pushMatrix4x4(const Matrix4x4& matrix4x4);
@@ -610,6 +618,7 @@ struct ScriptStack
 	void checkTemporary(int i, const Quaternion* quaternion);
 	void checkTemporary(int i, const Matrix4x4* matrix4x4);
 
+	void checkType(int i, const DebugGui* debugGui);
 	void checkType(int i, const DebugLine* debugLine);
 	void checkType(int i, const ResourcePackage* resourcePackage);
 	void checkType(int i, const World* world);

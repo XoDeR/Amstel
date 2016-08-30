@@ -24,7 +24,7 @@ namespace MemoryFn
 		uintptr_t ptr = (uintptr_t)p;
 		const uint32_t mod = ptr % align;
 
-		if (mod)
+		if (mod != 0)
 		{
 			ptr += align - mod;
 		}

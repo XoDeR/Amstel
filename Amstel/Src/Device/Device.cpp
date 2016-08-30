@@ -2,25 +2,29 @@
 #include "Device/Device.h"
 
 #include "Core/Json/JsonR.h"
+#include "Core/Json/JsonObject.h"
 #include "Core/Strings/StringStream.h"
 #include "Core/Strings/StringUtils.h"
 #include "Core/Memory/TempAllocator.h"
 #include "Core/Base/Types.h"
+#include "Core/Base/Os.h"
 #include "Core/Math/Vector3.h"
-#include "Core/FileSystem/DiskFileSystem.h"
 #include "Core/FileSystem/File.h"
+#include "Core/FileSystem/Path.h"
 #include "Core/FileSystem/FileSystem.h"
-#include "Core/FileSystem/Android/ApkFileSystem_Android.h"
+#include "Core/FileSystem/FileSystemDisk.h"
+#if RIO_PLATFORM_ANDROID
+#include "Core/FileSystem/Android/FileSystemApk_Android.h"
+#endif //RIO_PLATFORM_ANDROID
+#include "Core/Memory/Memory.h"
 #include "Core/Memory/ProxyAllocator.h"
 #include "Core/Containers/Array.h"
 #include "Core/Containers/Map.h"
 #include "Core/Math/Matrix4x4.h"
-#include "Core/Memory/Memory.h"
-#include "Core/Base/Os.h"
-#include "Core/FileSystem/Path.h"
 
-#include "Device/OsEventQueue.h"
+#include "Device/DeviceEventQueue.h"
 #include "Device/ConsoleServer.h"
+#include "Device/ConsoleApi.h"
 #include "Device/InputDevice.h"
 #include "Device/InputManager.h"
 #include "Device/Log.h"
@@ -28,7 +32,7 @@
 
 #include "Resource/ScriptResource.h"
 #include "Resource/MaterialResource.h"
-#include "Resource/BundleCompiler.h"
+#include "Resource/DataCompiler.h"
 #include "Resource/ConfigResource.h"
 #include "Resource/LevelResource.h"
 #include "Resource/PackageResource.h"
@@ -140,76 +144,17 @@ private:
 	ProxyAllocator allocator;
 };
 
-static void consoleCommandExecuteScript(void* /*data*/, ConsoleServer& /*cs*/, TcpSocket /*client*/, const char* json)
-{
-	TempAllocator4096 ta;
-	JsonObject jsonObject(ta);
-	DynamicString script(ta);
-	JsonRFn::parse(json, jsonObject);
-	JsonRFn::parseString(jsonObject["script"], script);
-	getDevice()->getScriptEnvironment()->executeScriptString(script.getCStr());
-}
-
-static void consoleCommandReloadResource(void* /*data*/, ConsoleServer& /*cs*/, TcpSocket /*client*/, const char* json)
-{
-	TempAllocator4096 ta;
-	JsonObject jsonObject(ta);
-	JsonRFn::parse(json, jsonObject);
-	StringId64 type = JsonRFn::parseResourceId(jsonObject["resourceType"]);
-	StringId64 name = JsonRFn::parseResourceId(jsonObject["resourceName"]);
- 	getDevice()->reload(type, name);
-}
-
-static void consoleCommandPause(void* /*data*/, ConsoleServer& /*cs*/, TcpSocket /*client*/, const char* /*json*/)
-{
-	getDevice()->pause();
-}
-
-static void consoleCommandUnpause(void* /*data*/, ConsoleServer& /*cs*/, TcpSocket /*client*/, const char* /*json*/)
-{
-	getDevice()->unpause();
-}
-
-static void consoleCommandCompileResource(void* data, ConsoleServer& cs, TcpSocket client, const char* json)
-{
-	TempAllocator4096 ta;
-	JsonObject jsonObject(ta);
-	JsonRFn::parse(json, jsonObject);
-
-	DynamicString id(ta);
-	DynamicString bundleDirectory(ta);
-	DynamicString platform(ta);
-	JsonRFn::parseString(jsonObject["id"], id);
-	JsonRFn::parseString(jsonObject["bundleDirectory"], bundleDirectory);
-	JsonRFn::parseString(jsonObject["platform"], platform);
-
-	{
-		TempAllocator512 ta;
-		StringStream stringStream(ta);
-		stringStream << "{\"type\":\"compile\",\"id\":\"" << id.getCStr() << "\",\"start\":true}";
-		cs.send(client, StringStreamFn::getCStr(stringStream));
-	}
-
-	BundleCompiler* bc = (BundleCompiler*)data;
-	bool success = bc->compile(bundleDirectory.getCStr(), platform.getCStr());
-	{
-		TempAllocator512 ta;
-		StringStream stringStream(ta);
-		stringStream << "{\"type\":\"compile\",\"id\":\"" << id.getCStr() << "\",\"success\":" << (success ? "true" : "false") << "}";
-		cs.send(client, StringStreamFn::getCStr(stringStream));
-	}
-}
-
 Device::Device(const DeviceOptions& deviceOptions)
 	: allocator(getDefaultAllocator(), MAX_SUBSYSTEMS_HEAP)
 	, deviceOptions(deviceOptions)
+	, bootConfig(getDefaultAllocator())
 	, worldList(getDefaultAllocator())
 {
 }
 
 void Device::readConfig()
 {
-	TempAllocator4096 ta;
+	TempAllocator512 ta;
 	DynamicString bootDirectory(ta);
 
 	if (deviceOptions.bootDirectory != nullptr)
@@ -224,37 +169,112 @@ void Device::readConfig()
 
 	resourceManager->load(RESOURCE_TYPE_CONFIG, configFileName);
 	resourceManager->flush();
-	const char* configFile = (const char*)resourceManager->get(RESOURCE_TYPE_CONFIG, configFileName);
-
-	JsonObject config(ta);
-	JsonRFn::parse(configFile, config);
-
-	bootScriptName = JsonRFn::parseResourceId(config["bootScript"]);
-	bootPackageName = JsonRFn::parseResourceId(config["bootPackage"]);
-
-	// Platform-specific configs
-	if (MapFn::has(config, FixedString(RIO_PLATFORM_NAME)))
-	{
-		JsonObject platform(ta);
-		JsonRFn::parse(config[RIO_PLATFORM_NAME], platform);
-
-		if (MapFn::has(platform, FixedString("windowWidth")))
-		{
-			configWindowWidth = (uint16_t)JsonRFn::parseInt(platform["windowWidth"]);
-		}
-		if (MapFn::has(platform, FixedString("windowHeight")))
-		{
-			configWindowHeight = (uint16_t)JsonRFn::parseInt(platform["windowHeight"]);
-		}
-	}
-
+	bootConfig.parse((const char*)resourceManager->get(RESOURCE_TYPE_CONFIG, configFileName));
 	resourceManager->unload(RESOURCE_TYPE_CONFIG, configFileName);
 }
 
-bool Device::tryProcessEvents()
+bool Device::processEvents(int16_t& mouseX, int16_t& mouseY, int16_t& mouseLastX, int16_t& mouseLastY, bool isVsyncEnabled)
 {
-	OsEvent event;
 	bool exit = false;
+	bool reset = false;
+
+	OsEvent event;
+	while (getNextEvent(event))
+	{
+		if (event.type == OsEventType::NONE)
+		{
+			continue;
+		}
+
+		switch (event.type)
+		{
+		case OsEventType::BUTTON:
+		{
+			const ButtonEvent ev = event.button;
+			switch (ev.deviceId)
+			{
+			case InputDeviceType::KEYBOARD:
+				inputManager->getKeyboard()->setButtonState(ev.buttonIndex, ev.pressed);
+				break;
+
+			case InputDeviceType::MOUSE:
+				inputManager->getMouse()->setButtonState(ev.buttonIndex, ev.pressed);
+				break;
+
+			case InputDeviceType::TOUCHSCREEN:
+				inputManager->getTouch()->setButtonState(ev.buttonIndex, ev.pressed);
+				break;
+
+			case InputDeviceType::JOYPAD:
+				inputManager->getJoypad(ev.deviceIndex)->setButtonState(ev.buttonIndex, ev.pressed);
+				break;
+			}
+		}
+		break;
+
+		case OsEventType::AXIS:
+		{
+			const AxisEvent ev = event.axis;
+			switch (ev.deviceId)
+			{
+			case InputDeviceType::MOUSE:
+				inputManager->getMouse()->setAxis(ev.axisIndex, createVector3(ev.axisX, ev.axisY, ev.axisZ));
+				if (ev.axisIndex == MouseAxis::CURSOR)
+				{
+					mouseX = ev.axisX;
+					mouseY = ev.axisY;
+				}
+				break;
+
+			case InputDeviceType::JOYPAD:
+				inputManager->getJoypad(ev.deviceIndex)->setAxis(ev.axisIndex, createVector3(ev.axisX, ev.axisY, ev.axisZ));
+				break;
+			}
+		}
+		break;
+
+		case OsEventType::STATUS:
+		{
+			const StatusEvent ev = event.status;
+			switch (ev.deviceId)
+			{
+			case InputDeviceType::JOYPAD:
+				inputManager->getJoypad(ev.deviceIndex)->setIsConnected(ev.connected);
+				break;
+			}
+		}
+		break;
+
+		case OsEventType::RESOLUTION:
+		{
+			const ResolutionEvent& ev = event.resolution;
+			this->width = ev.width;
+			this->height = ev.height;
+			reset = true;
+		}
+		break;
+		case OsEventType::EXIT:
+		{
+			exit = true;
+			break;
+		}
+		case OsEventType::PAUSE:
+		{
+			pause();
+			break;
+		}
+		case OsEventType::RESUME:
+		{
+			unpause();
+			break;
+		}
+		default:
+		{
+			RIO_FATAL("Unknown Os Event");
+			break;
+		}
+		}
+	}
 
 	const int16_t deltaX = mouseCurrentX - mouseLastX;
 	const int16_t deltaY = mouseCurrentY - mouseLastY;
@@ -262,109 +282,9 @@ bool Device::tryProcessEvents()
 	mouseLastX = mouseCurrentX;
 	mouseLastY = mouseCurrentY;
 
-	while (getNextEvent(event))
+	if (reset)
 	{
-		if (event.type == OsEvent::NONE)
-		{
-			continue;
-		}
-
-		switch (event.type)
-		{
-			case OsEvent::TOUCH:
-			{
-				const OsTouchEvent& ev = event.touch;
-				switch (ev.type)
-				{
-					case OsTouchEvent::POINTER:
-						inputManager->getTouch()->setButtonState(ev.pointerId, ev.pressed);
-						break;
-					case OsTouchEvent::MOVE:
-						inputManager->getTouch()->setAxis(ev.pointerId, createVector3(ev.x, ev.y, 0.0f));
-						break;
-					default:
-						RIO_FATAL("Unknown touch event type");
-						break;
-				}
-				break;
-			}
-			case OsEvent::MOUSE:
-			{
-				const OsMouseEvent& ev = event.mouse;
-				switch (ev.type)
-				{
-					case OsMouseEvent::BUTTON:
-						inputManager->getMouse()->setButtonState(ev.button, ev.pressed);
-						break;
-					case OsMouseEvent::MOVE:
-						mouseCurrentX = ev.x;
-						mouseCurrentY = ev.y;
-						inputManager->getMouse()->setAxis(MouseAxis::CURSOR, createVector3(ev.x, ev.y, 0.0f));
-						break;
-					case OsMouseEvent::WHEEL:
-						inputManager->getMouse()->setAxis(MouseAxis::WHEEL, createVector3(0.0f, ev.wheel, 0.0f));
-						break;
-					default:
-						RIO_FATAL("Unknown mouse event type");
-						break;
-				}
-				break;
-			}
-			case OsEvent::KEYBOARD:
-			{
-				const OsKeyboardEvent& ev = event.keyboard;
-				inputManager->getKeyboard()->setButtonState(ev.button, ev.pressed);
-				break;
-			}
-			case OsEvent::JOYPAD:
-			{
-				const OsJoypadEvent& ev = event.joypad;
-				switch (ev.type)
-				{
-					case OsJoypadEvent::CONNECTED:
-						inputManager->getJoypad(ev.index)->setIsConnected(ev.connected);
-						break;
-					case OsJoypadEvent::BUTTON:
-						inputManager->getJoypad(ev.index)->setButtonState(ev.button, ev.pressed);
-						break;
-					case OsJoypadEvent::AXIS:
-						inputManager->getJoypad(ev.index)->setAxis(ev.button, createVector3(ev.x, ev.y, ev.z));
-						break;
-					default:
-						RIO_FATAL("Unknown joypad event");
-						break;
-				}
-				break;
-			}
-			case OsEvent::METRICS:
-			{
-				const OsMetricsEvent& ev = event.metrics;
-				this->width = ev.width;
-				this->height = ev.height;
-				bgfx::reset(ev.width, ev.height, BGFX_RESET_VSYNC);
-				break;
-			}
-			case OsEvent::EXIT:
-			{
-				exit = true;
-				break;
-			}
-			case OsEvent::PAUSE:
-			{
-				pause();
-				break;
-			}
-			case OsEvent::RESUME:
-			{
-				unpause();
-				break;
-			}
-			default:
-			{
-				RIO_FATAL("Unknown Os Event");
-				break;
-			}
-		}
+		bgfx::reset(this->width, this->height, (isVsyncEnabled ? BGFX_RESET_VSYNC : BGFX_RESET_NONE));
 	}
 
 	return exit;
@@ -373,44 +293,52 @@ bool Device::tryProcessEvents()
 void Device::run()
 {
 	consoleServer = RIO_NEW(allocator, ConsoleServer)(getDefaultAllocator());
+	loadConsoleApi(*consoleServer);
 
 	bool doContinue = true;
 
 #if RIO_PLATFORM_LINUX || RIO_PLATFORM_WINDOWS
 	if (deviceOptions.needToCompile || deviceOptions.isServer)
 	{
-		bundleCompiler = RIO_NEW(allocator, BundleCompiler)();
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_CONFIG, RESOURCE_VERSION_CONFIG, ConfigResourceFn::compile);
+		dataCompiler = RIO_NEW(allocator, DataCompiler)();
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_CONFIG, RESOURCE_VERSION_CONFIG, ConfigResourceInternalFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_TEXTURE, RESOURCE_VERSION_TEXTURE, TextureResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_MESH, RESOURCE_VERSION_MESH, MeshResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SHADER, RESOURCE_VERSION_SHADER, ShaderResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_TEXTURE, RESOURCE_VERSION_TEXTURE, TextureResourceInternalFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_MESH, RESOURCE_VERSION_MESH, MeshResourceInternalFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_SHADER, RESOURCE_VERSION_SHADER, ShaderResourceInternalFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_UNIT, RESOURCE_VERSION_UNIT, UnitResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_UNIT, RESOURCE_VERSION_UNIT, UnitResourceInternalFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_PACKAGE, RESOURCE_VERSION_PACKAGE, PackageResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_PACKAGE, RESOURCE_VERSION_PACKAGE, PackageResourceInternalFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_MATERIAL, RESOURCE_VERSION_MATERIAL, MaterialResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_MATERIAL, RESOURCE_VERSION_MATERIAL, MaterialResourceInternalFn::compile);
 		
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_FONT, RESOURCE_VERSION_FONT, FontResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_LEVEL, RESOURCE_VERSION_LEVEL, LevelResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_FONT, RESOURCE_VERSION_FONT, FontResourceInternalFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_LEVEL, RESOURCE_VERSION_LEVEL, LevelResourceInternalFn::compile);
 		
 
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SPRITE, RESOURCE_VERSION_SPRITE, SpriteResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SPRITE_ANIMATION, RESOURCE_VERSION_SPRITE_ANIMATION, SpriteAnimationResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_SPRITE, RESOURCE_VERSION_SPRITE, SpriteResourceInternalFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_SPRITE_ANIMATION, RESOURCE_VERSION_SPRITE_ANIMATION, SpriteAnimationResourceInternalFn::compile);
 
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SOUND, RESOURCE_VERSION_SOUND, SoundResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_SOUND, RESOURCE_VERSION_SOUND, SoundResourceInternalFn::compile);
 
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_SCRIPT, RESOURCE_VERSION_SCRIPT, ScriptResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_SCRIPT, RESOURCE_VERSION_SCRIPT, ScriptResourceInternalFn::compile);
 
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_PHYSICS, RESOURCE_VERSION_PHYSICS, PhysicsResourceFn::compile);
-		bundleCompiler->registerResourceCompiler(RESOURCE_TYPE_PHYSICS_CONFIG, RESOURCE_VERSION_PHYSICS_CONFIG, PhysicsConfigResourceFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_PHYSICS, RESOURCE_VERSION_PHYSICS, PhysicsResourceInternalFn::compile);
+		dataCompiler->registerResourceCompiler(RESOURCE_TYPE_PHYSICS_CONFIG, RESOURCE_VERSION_PHYSICS_CONFIG, PhysicsConfigResourceInternalFn::compile);
 
-		bundleCompiler->scan(deviceOptions.sourceDirectory);
+		dataCompiler->mapSourceDirectory("", deviceOptions.sourceDirectory);
 
-		if (deviceOptions.isServer)
+		if (deviceOptions.mappedSourceDirectoryName)
 		{
-			consoleServer->registerCommand(StringId32("compile"), consoleCommandCompileResource, bundleCompiler);
+			dataCompiler->mapSourceDirectory(deviceOptions.mappedSourceDirectoryName
+				, deviceOptions.mappedSourceDirectoryPrefix
+				);
+		}
+		dataCompiler->scan();
+
+		if (deviceOptions.isServer == true)
+		{
 			consoleServer->listen(RIO_DEFAULT_COMPILER_PORT, false);
 
 			while (true)
@@ -421,10 +349,9 @@ void Device::run()
 		}
 		else
 		{
-			const char* sourceDirectory = deviceOptions.sourceDirectory;
-			const char* bundleDirectory = deviceOptions.bundleDirectory;
+			const char* dataDirectory = deviceOptions.dataDirectory;
 			const char* platform = deviceOptions.platformName;
-			doContinue = bundleCompiler->compile(bundleDirectory, platform);
+			doContinue = dataCompiler->compile(dataDirectory, platform);
 			doContinue = doContinue && deviceOptions.doContinue;
 		}
 	}
@@ -432,31 +359,25 @@ void Device::run()
 
 	if (doContinue == true)
 	{
+		consoleServer->listen(deviceOptions.consolePort, deviceOptions.needToWaitForConsole);
 #if RIO_PLATFORM_ANDROID
-		bundleFileSystem = RIO_NEW(allocator, ApkFileSystem)(getDefaultAllocator(), const_cast<AAssetManager*>((AAssetManager*)deviceOptions.assetManager));
+		bundleFileSystem = RIO_NEW(allocator, FileSystemApk)(getDefaultAllocator(), const_cast<AAssetManager*>((AAssetManager*)deviceOptions.assetManager));
 #else
-		const char* bundleDirectory = deviceOptions.bundleDirectory;
-		if (bundleDirectory != nullptr)
+		const char* dataDirectory = deviceOptions.dataDirectory;
+		if (dataDirectory != nullptr)
 		{
 			char buffer[1024];
-			bundleDirectory = OsFn::getCurrentWorkingDirectory(buffer, sizeof(buffer));
+			dataDirectory = OsFn::getCurrentWorkingDirectory(buffer, sizeof(buffer));
 		}
-		bundleFileSystem = RIO_NEW(allocator, DiskFileSystem)(getDefaultAllocator());
-		((DiskFileSystem*)bundleFileSystem)->setPrefix(bundleDirectory);
-		if (!bundleFileSystem->getDoesExist(bundleDirectory))
+		bundleFileSystem = RIO_NEW(allocator, FileSystemDisk)(getDefaultAllocator());
+		static_cast<FileSystemDisk*>(bundleFileSystem)->setPrefix(dataDirectory);
+		if (!bundleFileSystem->getDoesExist(dataDirectory))
 		{
-			bundleFileSystem->createDirectory(bundleDirectory);
+			bundleFileSystem->createDirectory(dataDirectory);
 		}
 
 		lastLogFile = bundleFileSystem->open(RIO_LAST_LOG, FileOpenMode::WRITE);
 #endif // RIO_PLATFORM_ANDROID
-
-		consoleServer->registerCommand(StringId32("script"), consoleCommandExecuteScript, nullptr);
-		consoleServer->registerCommand(StringId32("reload"), consoleCommandReloadResource, nullptr);
-		consoleServer->registerCommand(StringId32("pause"), consoleCommandPause, nullptr);
-		consoleServer->registerCommand(StringId32("unpause"), consoleCommandUnpause, nullptr);
-		consoleServer->listen(deviceOptions.consolePort, deviceOptions.needToWaitForConsole);
-
 		RIO_LOGI("Initializing Rio Engine %s...", getVersion());
 
 		ProfilerGlobalFn::init();
@@ -464,24 +385,24 @@ void Device::run()
 		resourceLoader = RIO_NEW(allocator, ResourceLoader)(*bundleFileSystem);
 		resourceManager = RIO_NEW(allocator, ResourceManager)(*resourceLoader);
 		
-		resourceManager->registerType(RESOURCE_TYPE_TEXTURE, TextureResourceFn::load, TextureResourceFn::unload, TextureResourceFn::online, TextureResourceFn::offline);
-		resourceManager->registerType(RESOURCE_TYPE_MESH, MeshResourceFn::load, MeshResourceFn::unload, MeshResourceFn::online, MeshResourceFn::offline);
-		resourceManager->registerType(RESOURCE_TYPE_SOUND, SoundResourceFn::load, SoundResourceFn::unload, NULL,        NULL        );
-		resourceManager->registerType(RESOURCE_TYPE_UNIT, UnitResourceFn::load, UnitResourceFn::unload, NULL,        NULL        );
-		resourceManager->registerType(RESOURCE_TYPE_SPRITE, SpriteResourceFn::load, SpriteResourceFn::unload, SpriteResourceFn::online, SpriteResourceFn::offline);
-		resourceManager->registerType(RESOURCE_TYPE_PACKAGE, PackageResourceFn::load, PackageResourceFn::unload, NULL,        NULL        );
+		resourceManager->registerType(RESOURCE_TYPE_TEXTURE, TextureResourceInternalFn::load, TextureResourceInternalFn::unload, TextureResourceInternalFn::online, TextureResourceInternalFn::offline);
+		resourceManager->registerType(RESOURCE_TYPE_MESH, MeshResourceInternalFn::load, MeshResourceInternalFn::unload, MeshResourceInternalFn::online, MeshResourceInternalFn::offline);
+		resourceManager->registerType(RESOURCE_TYPE_SOUND, SoundResourceInternalFn::load, SoundResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_UNIT, UnitResourceInternalFn::load, UnitResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_SPRITE, SpriteResourceInternalFn::load, SpriteResourceInternalFn::unload, SpriteResourceInternalFn::online, SpriteResourceInternalFn::offline);
+		resourceManager->registerType(RESOURCE_TYPE_PACKAGE, PackageResourceInternalFn::load, PackageResourceInternalFn::unload, nullptr, nullptr);
 		
-		resourceManager->registerType(RESOURCE_TYPE_MATERIAL, MaterialResourceFn::load, MaterialResourceFn::unload, MaterialResourceFn::online, MaterialResourceFn::offline);
+		resourceManager->registerType(RESOURCE_TYPE_MATERIAL, MaterialResourceInternalFn::load, MaterialResourceInternalFn::unload, MaterialResourceInternalFn::online, MaterialResourceInternalFn::offline);
 		
-		resourceManager->registerType(RESOURCE_TYPE_FONT, FontResourceFn::load, FontResourceFn::unload, NULL,        NULL        );
-		resourceManager->registerType(RESOURCE_TYPE_LEVEL, LevelResourceFn::load, LevelResourceFn::unload, NULL,        NULL        );
-		resourceManager->registerType(RESOURCE_TYPE_SHADER, ShaderResourceFn::load, ShaderResourceFn::unload, ShaderResourceFn::online, ShaderResourceFn::offline);
-		resourceManager->registerType(RESOURCE_TYPE_SPRITE_ANIMATION, SpriteAnimationResourceFn::load, SpriteAnimationResourceFn::unload, NULL,        NULL        );
-		resourceManager->registerType(RESOURCE_TYPE_CONFIG, ConfigResourceFn::load, ConfigResourceFn::unload, NULL,        NULL        );
+		resourceManager->registerType(RESOURCE_TYPE_FONT, FontResourceInternalFn::load, FontResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_LEVEL, LevelResourceInternalFn::load, LevelResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_SHADER, ShaderResourceInternalFn::load, ShaderResourceInternalFn::unload, ShaderResourceInternalFn::online, ShaderResourceInternalFn::offline);
+		resourceManager->registerType(RESOURCE_TYPE_SPRITE_ANIMATION, SpriteAnimationResourceInternalFn::load, SpriteAnimationResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_CONFIG, ConfigResourceInternalFn::load, ConfigResourceInternalFn::unload, nullptr, nullptr);
 
-		resourceManager->registerType(RESOURCE_TYPE_SCRIPT, ScriptResourceFn::load, ScriptResourceFn::unload, NULL, NULL);
-		resourceManager->registerType(RESOURCE_TYPE_PHYSICS, PhysicsResourceFn::load, PhysicsResourceFn::unload, NULL, NULL);
-		resourceManager->registerType(RESOURCE_TYPE_PHYSICS_CONFIG, PhysicsConfigResourceFn::load, PhysicsConfigResourceFn::unload, NULL, NULL);
+		resourceManager->registerType(RESOURCE_TYPE_SCRIPT, ScriptResourceInternalFn::load, ScriptResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_PHYSICS, PhysicsResourceInternalFn::load, PhysicsResourceInternalFn::unload, nullptr, nullptr);
+		resourceManager->registerType(RESOURCE_TYPE_PHYSICS_CONFIG, PhysicsConfigResourceInternalFn::load, PhysicsConfigResourceInternalFn::unload, nullptr, nullptr);
 
 		readConfig();
 
@@ -492,10 +413,12 @@ void Device::run()
 		mainWindow = WindowFn::create(allocator);
 		mainWindow->open(deviceOptions.windowX
 			, deviceOptions.windowY
-			, configWindowWidth
-			, configWindowHeight
+			, bootConfig.windowWidth
+			, bootConfig.windowHeight
 			, deviceOptions.parentWindow
 			);
+		mainWindow->setTitle(bootConfig.windowTitle.getCStr());
+		mainWindow->setFullscreen(bootConfig.isFullscreen);
 		mainWindow->setupBgfx();
 
 		bgfx::init(bgfx::RendererType::Count
@@ -517,24 +440,30 @@ void Device::run()
 		PhysicsGlobalFn::init(allocator);
 #endif // RIO_PHYSICS_NULL
 
-		bootResourcePackage = createResourcePackage(bootPackageName);
+		ResourcePackage* bootResourcePackage = createResourcePackage(bootConfig.bootPackageName);
 		bootResourcePackage->load();
 		bootResourcePackage->flush();
 
 		scriptEnvironment->loadScriptLibraries();
-		scriptEnvironment->execute((ScriptResource*)resourceManager->get(RESOURCE_TYPE_SCRIPT, bootScriptName));
+		scriptEnvironment->execute((ScriptResource*)resourceManager->get(RESOURCE_TYPE_SCRIPT, bootConfig.bootScriptName));
 		scriptEnvironment->callGlobalFunction("init", 0);
-
-		lastTime = OsFn::getClockTime();
 
 		RIO_LOGD("Engine initialized");
 
-		while (tryProcessEvents() == false && quitRequested == false)
+		int16_t mouse_x = 0;
+		int16_t mouse_y = 0;
+		int16_t mouse_last_x = 0;
+		int16_t mouse_last_y = 0;
+
+		int64_t lastTime = OsFn::getClockTime();
+		int64_t currentTime = 0;
+
+		while (processEvents(mouse_x, mouse_y, mouse_last_x, mouse_last_y, bootConfig.vSync) == false && quitRequested == false)
 		{
 			currentTime = OsFn::getClockTime();
 			const int64_t time = currentTime - lastTime;
 			lastTime = currentTime;
-			const double frequency = (double) OsFn::getClockFrequency();
+			const double frequency = static_cast<double>(OsFn::getClockFrequency());
 			lastDeltaTime = float(time * (1.0 / frequency));
 			timeSinceStart += lastDeltaTime;
 
@@ -552,13 +481,13 @@ void Device::run()
 					const int64_t t0 = OsFn::getClockTime();
 					scriptEnvironment->callGlobalFunction("update", 1, ARGUMENT_FLOAT, getLastDeltaTime());
 					const int64_t t1 = OsFn::getClockTime();
-					RECORD_FLOAT("lua.update", (t1 - t0)*(1.0 / frequency));
+					RECORD_FLOAT("lua.update", static_cast<float>((t1 - t0)*(1.0 / frequency)));
 				}
 				{
 					const int64_t t0 = OsFn::getClockTime();
 					scriptEnvironment->callGlobalFunction("render", 1, ARGUMENT_FLOAT, getLastDeltaTime());
 					const int64_t t1 = OsFn::getClockTime();
-					RECORD_FLOAT("lua.render", (t1 - t0)*(1.0 / frequency));
+					RECORD_FLOAT("lua.render", static_cast<float>((t1 - t0)*(1.0 / frequency)));
 				}
 			}
 
@@ -596,6 +525,7 @@ void Device::run()
 		RIO_DELETE(allocator, resourceLoader);
 
 		bgfx::shutdown();
+		mainWindow->close();
 		WindowFn::destroy(allocator, *mainWindow);
 		DisplayFn::destroy(allocator, *mainDisplay);
 		RIO_DELETE(allocator, bgfxCallback);
@@ -611,11 +541,35 @@ void Device::run()
 		ProfilerGlobalFn::shutdown();
 	}
 
+	RIO_DELETE(allocator, dataCompiler);
 	consoleServer->shutdown();
 	RIO_DELETE(allocator, consoleServer);
-	RIO_DELETE(allocator, bundleCompiler);
-
 	allocator.clear();
+}
+
+inline int Device::getCommandLineArgumentListCount() const
+{
+	return deviceOptions.commandLineArgumentListCount;
+}
+
+inline const char** Device::getCommandLineArgumentList() const
+{
+	return (const char**)deviceOptions.commandLineArgumentList;
+}
+
+inline const char* Device::getPlatform() const
+{
+	return RIO_PLATFORM_NAME;
+}
+
+inline const char* Device::getArchitecture() const
+{
+	return RIO_ARCH_NAME;
+}
+
+inline const char* Device::getVersion() const
+{
+	return RIO_VERSION;
 }
 
 void Device::quit()
@@ -669,11 +623,11 @@ void Device::render(World& world, CameraInstance camera)
 	bgfx::setViewRect(1, 0, 0, width, height);
 	bgfx::setViewRect(2, 0, 0, width, height);
 
-	const float* view = getFloatPointer(world.getCameraViewMatrix(camera));
-	const float* proj = getFloatPointer(world.getCameraProjectionMatrix(camera));
+	const Matrix4x4 view = world.cameraGetViewMatrix(camera);
+	const Matrix4x4 proj = world.cameraGetProjectionMatrix(camera);
 
-	bgfx::setViewTransform(0, view, proj);
-	bgfx::setViewTransform(1, view, proj);
+	bgfx::setViewTransform(0, getFloatPointer(view), getFloatPointer(proj));
+	bgfx::setViewTransform(1, getFloatPointer(view), getFloatPointer(proj));
 	bgfx::setViewTransform(2, getFloatPointer(MATRIX4X4_IDENTITY), getFloatPointer(MATRIX4X4_IDENTITY));
 	bgfx::setViewSeq(2, true);
 
@@ -681,9 +635,14 @@ void Device::render(World& world, CameraInstance camera)
 	bgfx::touch(1);
 	bgfx::touch(2);
 
-	world.setCameraViewportMetrics(camera, 0, 0, width, height);
+	float aspectRatio = (bootConfig.aspectRatio == -1.0f
+		? (float)this->width / (float)this->height
+		: bootConfig.aspectRatio
+		);
+	world.cameraSetAspect(camera, aspectRatio);
+	world.cameraSetViewportMetrics(camera, 0, 0, width, height);
 
-	world.render(camera);
+	world.render(view, proj);
 }
 
 World* Device::createWorld()
@@ -712,7 +671,7 @@ void Device::destroyWorld(World& world)
 		}
 	}
 
-	RIO_ASSERT(false, "Bad world");
+	RIO_FATAL("Bad world");
 }
 
 ResourcePackage* Device::createResourcePackage(StringId64 id)
@@ -727,7 +686,6 @@ void Device::destroyResourcePackage(ResourcePackage& rp)
 
 void Device::reload(StringId64 type, StringId64 name)
 {
-	const void* oldResource = resourceManager->get(type, name);
 	resourceManager->reload(type, name);
 	const void* newResource = resourceManager->get(type, name);
 
@@ -790,9 +748,9 @@ ConsoleServer* Device::getConsoleServer()
 	return consoleServer;
 }
 
-BundleCompiler* Device::getBundleCompiler()
+DataCompiler* Device::getDataCompiler()
 {
-	return bundleCompiler;
+	return dataCompiler;
 }
 
 ResourceManager* Device::getResourceManager()

@@ -11,6 +11,9 @@ namespace Rio
 // Collection of resources to load in a batch
 struct ResourcePackage
 {
+private:
+	uint32_t marker = 0;
+public:
 	ResourcePackage(StringId64 id, ResourceManager& resman);
 	~ResourcePackage();
 	// Loads all the resources in the package
@@ -23,14 +26,7 @@ struct ResourcePackage
 	void flush();
 	// Returns whether the package has been loaded
 	bool hasLoaded() const;
-public:
-	enum 
-	{ 
-		MARKER = 0x9a1ac68c 
-	};
 private:
-	uint32_t marker;
-
 	ResourceManager* resourceManager;
 	StringId64 id;
 	const PackageResource* packageResource = nullptr;

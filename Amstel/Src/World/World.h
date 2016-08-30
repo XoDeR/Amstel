@@ -15,6 +15,8 @@ namespace Rio
 class World
 {
 private:
+	uint32_t marker = 0;
+private:
 	struct Camera
 	{
 		UnitId unit;
@@ -56,48 +58,46 @@ public:
 	void getAllUnits(Array<UnitId>& units) const;
 
 	// Creates a new camera.
-	CameraInstance createCamera(UnitId id, const CameraDesc& cameraDesc);
+	CameraInstance cameraCreate(UnitId id, const CameraDesc& cameraDesc, const Matrix4x4& transformMatrix);
 	// Destroys the camera <cameraInstance>
-	void destroyCamera(CameraInstance cameraInstance);
+	void cameraDestroy(CameraInstance cameraInstance);
 	// Returns the camera owned by unit <id>
-	CameraInstance getCamera(UnitId id);
+	CameraInstance cameraGet(UnitId id);
 	// Sets the projection type of the camera
-	void setCameraProjectionType(CameraInstance i, ProjectionType::Enum type);
-	ProjectionType::Enum getCameraProjectionType(CameraInstance i) const;
+	void cameraSetProjectionType(CameraInstance i, ProjectionType::Enum type);
+	ProjectionType::Enum cameraGetProjectionType(CameraInstance i) const;
 	// Returns the projection matrix of the camera
-	const Matrix4x4& getCameraProjectionMatrix(CameraInstance i) const;
+	const Matrix4x4& cameraGetProjectionMatrix(CameraInstance i) const;
 	// Returns the view matrix of the camera
-	Matrix4x4 getCameraViewMatrix(CameraInstance i) const;
+	Matrix4x4 cameraGetViewMatrix(CameraInstance i) const;
 	// Returns the field-of-view of the camera in degrees
-	float getCameraFov(CameraInstance i) const;
+	float cameraGetFov(CameraInstance i) const;
 	// Sets the field-of-view of the camera in degrees
-	void setCameraFov(CameraInstance i, float fov);
-	// Returns the aspect ratio of the camera (Perspective projection only)
-	float getCameraAspect(CameraInstance i) const;
+	void cameraSetFov(CameraInstance i, float fov);
 	// Sets the aspect ratio of the camera (Perspective projection only)
-	void setCameraAspect(CameraInstance i, float aspect);
+	void cameraSetAspect(CameraInstance i, float aspect);
 	// Returns the near clip distance of the camera
-	float getCameraNearClipDistance(CameraInstance i) const;
+	float cameraGetNearClipDistance(CameraInstance i) const;
 	// Sets the near clip distance of the camera
-	void setCameraNearClipDistance(CameraInstance i, float near);
+	void cameraSetNearClipDistance(CameraInstance i, float near);
 	// Returns the far clip distance of the camera
-	float getCameraFarClipDistance(CameraInstance i) const;
+	float cameraGetFarClipDistance(CameraInstance i) const;
 	// Sets the far clip distance of the camera
-	void setCameraFarClipDistance(CameraInstance i, float far);
+	void cameraSetFarClipDistance(CameraInstance i, float far);
 	// Sets the coordinates for orthographic clipping planes
 	// (Orthographic projection only)
-	void setCameraOrthographicMetrics(CameraInstance i, float left, float right, float bottom, float top);
+	void cameraSetOrthographicMetrics(CameraInstance i, float left, float right, float bottom, float top);
 	// Sets the coordinates for the camera viewport in pixels
-	void setCameraViewportMetrics(CameraInstance i, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+	void cameraSetViewportMetrics(CameraInstance i, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 	// Returns <position> from screen-space to world-space coordinates
-	Vector3 getCameraWorldFromScreen(CameraInstance i, const Vector3& position);
+	Vector3 cameraGetWorldFromScreen(CameraInstance i, const Vector3& position);
 	// Returns <position> from world-space to screen-space coordinates
-	Vector3 getCameraScreenFromWorld(CameraInstance i, const Vector3& position);
+	Vector3 cameraGetScreenFromWorld(CameraInstance i, const Vector3& position);
 	
 	void updateAnimations(float dt);
 	void updateScene(float dt);
 	void update(float dt);
-	void render(CameraInstance i);
+	void render(const Matrix4x4& view, const Matrix4x4& projection);
 
 	SoundInstanceId playSound(const SoundResource& soundResource, bool loop = false, float volume = 1.0f, const Vector3& position = VECTOR3_ZERO, float range = 50.0f);
 
@@ -130,9 +130,9 @@ public:
 	DebugLine* createDebugLine(bool depthTest);
 	void destroyDebugLine(DebugLine& line);
 
-	// Creates a new screen-space Gui
-	Gui* createScreenGui(float scaleWidth, float scaleHeight);
-	void destroyGui(Gui& gui);
+	// Creates a new screen-space DebugGui
+	DebugGui* createScreenDebugGui(float scaleWidth, float scaleHeight);
+	void destroyGui(DebugGui& gui);
 
 	// Loads the level <name> into the world
 	Level* loadLevel(StringId64 name, const Vector3& position, const Quaternion& rotation);
@@ -149,10 +149,7 @@ public:
 	void postUnitDestroyedEvent(UnitId id);
 	void postLevelLoadedEvent();
 
-	static const uint32_t MARKER = 0xfb6ce2d3;
 private:
-	uint32_t marker;
-
 	Allocator* allocator;
 	ResourceManager* resourceManager;
 	ShaderManager* shaderManager;

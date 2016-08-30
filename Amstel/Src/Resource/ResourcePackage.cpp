@@ -3,12 +3,13 @@
 #include "Core/Containers/Array.h"
 #include "Resource/ResourceManager.h"
 #include "Resource/PackageResource.h"
+#include "World/WorldTypes.h"
 
 namespace Rio
 {
 
 ResourcePackage::ResourcePackage(StringId64 id, ResourceManager& resourceManager)
-	: marker(MARKER)
+	: marker(RESOURCE_PACKAGE_MARKER)
 	, resourceManager(&resourceManager)
 	, id(id)
 {

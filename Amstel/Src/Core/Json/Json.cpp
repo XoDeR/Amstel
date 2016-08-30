@@ -271,14 +271,14 @@ namespace JsonFn
 				DynamicString key(ta);
 				parseString(json, key);
 
-				FixedString fs_key(keyBegin, key.getLength());
+				FixedString fixedStringKey(keyBegin, key.getLength());
 
 				json = skipString(json);
 				json = skipSpaces(json);
 				json = getNext(json, ':');
 				json = skipSpaces(json);
 
-				MapFn::set(object, fs_key, json);
+				MapFn::set(object.map, fixedStringKey, json);
 
 				json = skipValue(json);
 				json = skipSpaces(json);

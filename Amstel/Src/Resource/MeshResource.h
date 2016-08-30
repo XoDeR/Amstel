@@ -57,7 +57,7 @@ struct MeshResource
 			}
 		}
 
-		RIO_ASSERT(false, "Mesh name not found");
+		RIO_FATAL("Mesh name not found");
 		return nullptr;
 	}
 
@@ -65,14 +65,14 @@ struct MeshResource
 	Array<MeshGeometry*> meshGeometryList;
 };
 
-namespace MeshResourceFn
+namespace MeshResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void online(StringId64 id, ResourceManager& resourceManager);
 	void offline(StringId64 id, ResourceManager& resourceManager);
 	void unload(Allocator& a, void* resource);
-}
+} // namespace MeshResourceInternalFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

@@ -13,9 +13,11 @@ namespace Rio
 
 struct DebugLine
 {
+private:
+	uint32_t marker = 0;
+public:
 	// Default number of segments
 	static const uint32_t NUM_SEGMENTS = 36;
-	static const uint32_t MARKER = 0xd7c17715;
 	static const uint32_t MAX_LINES = 32768;
 
 	struct Line
@@ -52,8 +54,6 @@ struct DebugLine
 	void reset();
 	// Submits the lines to renderer for drawing
 	void submit();
-
-	uint32_t marker;
 
 	StringId32 shaderNameHash;
 	bgfx::VertexDecl vertexDecl;

@@ -24,6 +24,7 @@ struct Window
 	virtual void* getHandle() = 0;
 	// Sets whether to show the cursor
 	virtual void setShowCursor(bool show) = 0;
+	virtual void setFullscreen(bool isFullscreen) = 0;
 	virtual void setupBgfx() = 0;
 };
 

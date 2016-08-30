@@ -18,7 +18,9 @@ struct DeviceOptions
 	int commandLineArgumentListCount;
 	const char** commandLineArgumentList;
 	const char* sourceDirectory = nullptr;
-	const char* bundleDirectory = nullptr;
+	const char* mappedSourceDirectoryName = nullptr;
+	const char* mappedSourceDirectoryPrefix = nullptr;
+	const char* dataDirectory = nullptr;
 	const char* bootDirectory = nullptr;
 	const char* platformName = nullptr;
 	bool needToWaitForConsole = false;

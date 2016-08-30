@@ -6,7 +6,7 @@
 #include "Core/Math/Color4.h"
 #include "Core/Math/Vector2.h"
 #include "Core/Math/Vector3.h"
-#include "Core/Math/Plane.h"
+#include "Core/Math/Plane3.h"
 #include "Core/Math/Intersection.h"
 #include "Core/Math/MathTypes.h"
 #include "Core/Math/MathUtils.h"
@@ -23,7 +23,7 @@
 #include "Resource/ResourcePackage.h"
 
 #include "World/DebugLine.h"
-#include "World/Gui.h"
+#include "World/DebugGui.h"
 #include "World/Material.h"
 #include "World/PhysicsWorld.h"
 #include "World/RenderWorld.h"
@@ -120,12 +120,12 @@ static RaycastMode::Enum getRaycastModeFromName(const char* name)
 static int math_getRayPlaneIntersection(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	const Plane plane = PlaneFn::createPlaneFromPointAndNormal(scriptStack.getVector3(3)
+	const Plane3 plane3 = Plane3Fn::createPlane3FromPointAndNormal(scriptStack.getVector3(3)
 		, scriptStack.getVector3(4)
 		);
 	const float result = getRayPlaneIntersection(scriptStack.getVector3(1)
 		, scriptStack.getVector3(2)
-		, plane
+		, plane3
 		);
 	scriptStack.pushFloat(result);
 	return 1;
@@ -945,11 +945,24 @@ static int quaternionBox_getString(lua_State* scriptState)
 static int color4_constructor(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
+	uint8_t r = (uint8_t)scriptStack.getInteger(1 + 1);
+	uint8_t g = (uint8_t)scriptStack.getInteger(2 + 1);
+	uint8_t b = (uint8_t)scriptStack.getInteger(3 + 1);
+	uint8_t a = (uint8_t)scriptStack.getInteger(4 + 1);
+	scriptStack.pushColor4(createColorRgba(r, g, b, a));
+
+	return 1;
+}
+
+static int color4_lerp(lua_State* L)
+{
+	ScriptStack scriptStack(L);
+	Quaternion quaternion = getLinearInterpolation((const Quaternion&)scriptStack.getColor4(1), (const Quaternion&)scriptStack.getColor4(2), scriptStack.getFloat(3));
 	Color4 color4;
-	color4.x = scriptStack.getFloat(1 + 1);
-	color4.y = scriptStack.getFloat(2 + 1);
-	color4.z = scriptStack.getFloat(3 + 1);
-	color4.w = scriptStack.getFloat(4 + 1);
+	color4.x = quaternion.x;
+	color4.y = quaternion.y;
+	color4.z = quaternion.z;
+	color4.w = quaternion.w;
 	scriptStack.pushColor4(color4);
 	return 1;
 }
@@ -1137,28 +1150,60 @@ static int inputDevice_getAxis(lua_State* scriptState, InputDevice& inputDevice)
 static int inputDevice_getButtonName(lua_State* scriptState, InputDevice& inputDevice)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushString(inputDevice.getButtonName(scriptStack.getInteger(1)));
+	const char* name = inputDevice.getButtonName(scriptStack.getInteger(1));
+	if (name != nullptr)
+	{
+		scriptStack.pushString(name);
+	}
+	else
+	{
+		scriptStack.pushNil();
+	}
 	return 1;
 }
 
 static int inputDevice_getAxisName(lua_State* scriptState, InputDevice& inputDevice)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushString(inputDevice.getAxisName(scriptStack.getInteger(1)));
+	const char* name = inputDevice.getAxisName(scriptStack.getInteger(1));
+	if (name != nullptr)
+	{
+		scriptStack.pushString(name);
+	}
+	else
+	{
+		scriptStack.pushNil();
+	}
 	return 1;
 }
 
 static int inputDevice_getButtonId(lua_State* scriptState, InputDevice& inputDevice)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushInteger(inputDevice.getButtonId(scriptStack.getStringId32(1)));
+	const uint8_t buttonId = inputDevice.getButtonId(scriptStack.getStringId32(1));
+	if (buttonId != UINT8_MAX)
+	{
+		scriptStack.pushInteger(buttonId);
+	}
+	else
+	{
+		scriptStack.pushNil();
+	}
 	return 1;
 }
 
 static int inputDevice_getAxisId(lua_State* scriptState, InputDevice& inputDevice)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushInteger(inputDevice.getAxisId(scriptStack.getStringId32(1)));
+	const uint8_t axisId = inputDevice.getAxisId(scriptStack.getStringId32(1));
+	if (axisId != UINT8_MAX)
+	{
+		scriptStack.pushInteger(axisId);
+	}
+	else
+	{
+		scriptStack.pushNil();
+	}
 	return 1;
 }
 
@@ -1331,14 +1376,32 @@ static int world_getUnitList(lua_State* scriptState)
 	return 1;
 }
 
-static int world_getCamera(lua_State* scriptState)
+static int world_cameraGet(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushCamera(scriptStack.getWorld(1)->getCamera(scriptStack.getUnit(2)));
+	scriptStack.pushCamera(scriptStack.getWorld(1)->cameraGet(scriptStack.getUnit(2)));
 	return 1;
 }
 
-static int world_setCameraProjectionType(lua_State* scriptState)
+static int world_cameraCreate(lua_State* scriptState)
+{
+	ScriptStack scriptStack(scriptState);
+	World* world = scriptStack.getWorld(1);
+	UnitId unit = scriptStack.getUnit(2);
+
+	CameraDesc cameraDesc;
+	cameraDesc.type = getProjectionTypeFromName(scriptStack.getString(3));
+	cameraDesc.fov = scriptStack.getFloat(4);
+	cameraDesc.nearRange = scriptStack.getFloat(5);
+	cameraDesc.farRange = scriptStack.getFloat(6);
+
+	Matrix4x4 pose = scriptStack.getMatrix4x4(7);
+
+	scriptStack.pushCamera(world->cameraCreate(unit, cameraDesc, pose));
+	return 1;
+}
+
+static int world_cameraSetProjectionType(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 
@@ -1346,94 +1409,80 @@ static int world_setCameraProjectionType(lua_State* scriptState)
 	const ProjectionType::Enum projectionType = getProjectionTypeFromName(name);
 	LUA_ASSERT(projectionType != ProjectionType::COUNT, scriptStack, "Unknown projection type: '%s'", name);
 
-	scriptStack.getWorld(1)->setCameraProjectionType(scriptStack.getCamera(2), projectionType);
+	scriptStack.getWorld(1)->cameraSetProjectionType(scriptStack.getCamera(2), projectionType);
 	return 0;
 }
 
-static int world_getCameraProjectionType(lua_State* scriptState)
+static int world_cameraGetProjectionType(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	ProjectionType::Enum projectionType = scriptStack.getWorld(1)->getCameraProjectionType(scriptStack.getCamera(2));
+	ProjectionType::Enum projectionType = scriptStack.getWorld(1)->cameraGetProjectionType(scriptStack.getCamera(2));
 	scriptStack.pushString(projectionInfoMap[projectionType].name);
 	return 1;
 }
 
-static int world_getCameraFov(lua_State* scriptState)
+static int world_cameraGetFov(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getWorld(1)->getCameraFov(scriptStack.getCamera(2)));
+	scriptStack.pushFloat(scriptStack.getWorld(1)->cameraGetFov(scriptStack.getCamera(2)));
 	return 1;
 }
 
-static int world_setCameraFov(lua_State* scriptState)
+static int world_cameraSetFov(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getWorld(1)->setCameraFov(scriptStack.getCamera(2), scriptStack.getFloat(3));
+	scriptStack.getWorld(1)->cameraSetFov(scriptStack.getCamera(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int world_getCameraAspect(lua_State* scriptState)
+static int world_cameraGetNearClipDistance(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getWorld(1)->getCameraAspect(scriptStack.getCamera(2)));
+	scriptStack.pushFloat(scriptStack.getWorld(1)->cameraGetNearClipDistance(scriptStack.getCamera(2)));
 	return 1;
 }
 
-static int world_setCameraAspect(lua_State* scriptState)
+static int world_cameraSetNearClipDistance(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getWorld(1)->setCameraAspect(scriptStack.getCamera(2), scriptStack.getFloat(3));
+	scriptStack.getWorld(1)->cameraSetNearClipDistance(scriptStack.getCamera(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int world_getCameraNearClipDistance(lua_State* scriptState)
+static int world_cameraGetFarClipDistance(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getWorld(1)->getCameraNearClipDistance(scriptStack.getCamera(2)));
+	scriptStack.pushFloat(scriptStack.getWorld(1)->cameraGetFarClipDistance(scriptStack.getCamera(2)));
 	return 1;
 }
 
-static int world_setCameraNearClipDistance(lua_State* scriptState)
+static int world_cameraSetFarClipDistance(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getWorld(1)->setCameraNearClipDistance(scriptStack.getCamera(2), scriptStack.getFloat(3));
+	scriptStack.getWorld(1)->cameraSetFarClipDistance(scriptStack.getCamera(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int world_getCameraFarClipDistance(lua_State* scriptState)
+static int world_cameraSetOrthographicMetrics(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getWorld(1)->getCameraFarClipDistance(scriptStack.getCamera(2)));
-	return 1;
-}
-
-static int world_setCameraFarClipDistance(lua_State* scriptState)
-{
-	ScriptStack scriptStack(scriptState);
-	scriptStack.getWorld(1)->setCameraFarClipDistance(scriptStack.getCamera(2), scriptStack.getFloat(3));
-	return 0;
-}
-
-static int world_setCameraOrthographicMetrics(lua_State* scriptState)
-{
-	ScriptStack scriptStack(scriptState);
-	scriptStack.getWorld(1)->setCameraOrthographicMetrics(scriptStack.getCamera(2)
+	scriptStack.getWorld(1)->cameraSetOrthographicMetrics(scriptStack.getCamera(2)
 		, scriptStack.getFloat(3), scriptStack.getFloat(4)
 		, scriptStack.getFloat(5), scriptStack.getFloat(6));
 	return 0;
 }
 
-static int world_getCameraWorldFromScreen(lua_State* scriptState)
+static int world_cameraGetWorldFromScreen(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector3(scriptStack.getWorld(1)->getCameraWorldFromScreen(scriptStack.getCamera(2), scriptStack.getVector3(3)));
+	scriptStack.pushVector3(scriptStack.getWorld(1)->cameraGetWorldFromScreen(scriptStack.getCamera(2), scriptStack.getVector3(3)));
 	return 1;
 }
 
-static int world_getCameraScreenFromWorld(lua_State* scriptState)
+static int world_cameraGetScreenFromWorld(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector3(scriptStack.getWorld(1)->getCameraScreenFromWorld(scriptStack.getCamera(2), scriptStack.getVector3(3)));
+	scriptStack.pushVector3(scriptStack.getWorld(1)->cameraGetScreenFromWorld(scriptStack.getCamera(2), scriptStack.getVector3(3)));
 	return 1;
 }
 
@@ -1534,17 +1583,17 @@ static int world_destroyDebugLine(lua_State* scriptState)
 	return 0;
 }
 
-static int world_createScreenGui(lua_State* scriptState)
+static int world_createScreenDebugGui(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushGui(scriptStack.getWorld(1)->createScreenGui(scriptStack.getFloat(2), scriptStack.getFloat(3)));
+	scriptStack.pushDebugGui(scriptStack.getWorld(1)->createScreenDebugGui(scriptStack.getFloat(2), scriptStack.getFloat(3)));
 	return 1;
 }
 
 static int world_destroyGui(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getWorld(1)->destroyGui(*scriptStack.getGui(2));
+	scriptStack.getWorld(1)->destroyGui(*scriptStack.getDebugGui(2));
 	return 0;
 }
 
@@ -1746,7 +1795,7 @@ static int unitManager_getIsAlive(lua_State* scriptState)
 	return 1;
 }
 
-static int renderWorld_createMesh(lua_State* scriptState)
+static int renderWorld_meshCreate(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	RenderWorld* renderWorld = scriptStack.getRenderWorld(1);
@@ -1760,18 +1809,18 @@ static int renderWorld_createMesh(lua_State* scriptState)
 
 	Matrix4x4 pose = scriptStack.getMatrix4x4(7);
 
-	scriptStack.pushMeshInstance(renderWorld->createMesh(unitId, meshRendererDesc, pose));
+	scriptStack.pushMeshInstance(renderWorld->meshCreate(unitId, meshRendererDesc, pose));
 	return 1;
 }
 
-static int renderWorld_destroyMesh(lua_State* scriptState)
+static int renderWorld_meshDestroy(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->destroyMesh(scriptStack.getMeshInstance(2));
+	scriptStack.getRenderWorld(1)->meshDestroy(scriptStack.getMeshInstance(2));
 	return 0;
 }
 
-static int renderWorld_getMeshInstanceList(lua_State* scriptState)
+static int renderWorld_meshGetInstanceList(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	RenderWorld* renderWorld = scriptStack.getRenderWorld(1);
@@ -1779,7 +1828,7 @@ static int renderWorld_getMeshInstanceList(lua_State* scriptState)
 
 	TempAllocator512 ta;
 	Array<MeshInstance> meshInstanceList(ta);
-	renderWorld->getMeshInstanceList(unitId, meshInstanceList);
+	renderWorld->meshGetInstanceList(unitId, meshInstanceList);
 
 	scriptStack.pushTable(ArrayFn::getCount(meshInstanceList));
 	for (uint32_t i = 0; i < ArrayFn::getCount(meshInstanceList); ++i)
@@ -1792,20 +1841,20 @@ static int renderWorld_getMeshInstanceList(lua_State* scriptState)
 	return 1;
 }
 
-static int renderWorld_getMeshObb(lua_State* scriptState)
+static int renderWorld_meshGetObb(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	Obb obb = scriptStack.getRenderWorld(1)->getMeshObb(scriptStack.getMeshInstance(2));
+	Obb obb = scriptStack.getRenderWorld(1)->meshGetObb(scriptStack.getMeshInstance(2));
 	scriptStack.pushMatrix4x4(obb.transformMatrix);
 	scriptStack.pushVector3(obb.halfExtents);
 	return 2;
 }
 
-static int renderWorld_getMeshRaycast(lua_State* scriptState)
+static int renderWorld_meshGetRaycast(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	RenderWorld* renderWorld = scriptStack.getRenderWorld(1);
-	float t = renderWorld->getMeshRaycast(scriptStack.getMeshInstance(2)
+	float t = renderWorld->meshGetRaycast(scriptStack.getMeshInstance(2)
 		, scriptStack.getVector3(3)
 		, scriptStack.getVector3(4)
 		);
@@ -1813,14 +1862,14 @@ static int renderWorld_getMeshRaycast(lua_State* scriptState)
 	return 1;
 }
 
-static int renderWorld_setMeshVisible(lua_State* scriptState)
+static int renderWorld_meshSetVisible(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setMeshVisible(scriptStack.getMeshInstance(2), scriptStack.getBool(3));
+	scriptStack.getRenderWorld(1)->meshSetVisible(scriptStack.getMeshInstance(2), scriptStack.getBool(3));
 	return 0;
 }
 
-static int renderWorld_createSprite(lua_State* scriptState)
+static int renderWorld_spriteCreate(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	RenderWorld* renderWorld = scriptStack.getRenderWorld(1);
@@ -1833,53 +1882,43 @@ static int renderWorld_createSprite(lua_State* scriptState)
 
 	Matrix4x4 pose = scriptStack.getMatrix4x4(6);
 
-	scriptStack.pushSpriteInstance(renderWorld->createSprite(unitId, spriteRendererDesc, pose));
+	scriptStack.pushSpriteInstance(renderWorld->spriteCreate(unitId, spriteRendererDesc, pose));
 	return 1;
 }
 
-static int renderWorld_destroySprite(lua_State* scriptState)
+static int renderWorld_spriteDestroy(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->destroySprite(scriptStack.getSpriteInstance(2));
+	scriptStack.getRenderWorld(1)->spriteDestroy(scriptStack.getSpriteInstance(2));
 	return 0;
 }
 
-static int renderWorld_getSpriteInstanceList(lua_State* scriptState)
+static int renderWorld_spriteGetInstanceList(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	RenderWorld* renderWorld = scriptStack.getRenderWorld(1);
 	UnitId unitId = scriptStack.getUnit(2);
-
-	TempAllocator512 ta;
-	Array<SpriteInstance> spriteInstanceList(ta);
-	renderWorld->getSpriteInstanceList(unitId, spriteInstanceList);
-
-	scriptStack.pushTable(ArrayFn::getCount(spriteInstanceList));
-	for (uint32_t i = 0; i < ArrayFn::getCount(spriteInstanceList); ++i)
-	{
-		scriptStack.pushKeyBegin(i+1);
-		scriptStack.pushSpriteInstance(spriteInstanceList[i]);
-		scriptStack.pushKeyEnd();
-	}
+	// NOTE just one sprite is returned
+	scriptStack.pushSpriteInstance(renderWorld->spriteGet(unitId));
 
 	return 1;
 }
 
-static int renderWorld_setSpriteFrame(lua_State* scriptState)
+static int renderWorld_spriteSetFrame(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setSpriteFrame(scriptStack.getSpriteInstance(2), scriptStack.getInteger(3));
+	scriptStack.getRenderWorld(1)->spriteSetFrame(scriptStack.getSpriteInstance(2), scriptStack.getInteger(3));
 	return 0;
 }
 
-static int renderWorld_setSpriteVisible(lua_State* scriptState)
+static int renderWorld_spriteSetVisible(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setSpriteVisible(scriptStack.getSpriteInstance(2), scriptStack.getBool(3));
+	scriptStack.getRenderWorld(1)->spriteSetVisible(scriptStack.getSpriteInstance(2), scriptStack.getBool(3));
 	return 0;
 }
 
-static int renderWorld_createLight(lua_State* scriptState)
+static int renderWorld_lightCreate(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 
@@ -1896,61 +1935,76 @@ static int renderWorld_createLight(lua_State* scriptState)
 
 	Matrix4x4 pose = scriptStack.getMatrix4x4(8);
 
-	scriptStack.pushLightInstance(scriptStack.getRenderWorld(1)->createLight(scriptStack.getUnit(2), lightDesc, pose));
+	scriptStack.pushLightInstance(scriptStack.getRenderWorld(1)->lightCreate(scriptStack.getUnit(2), lightDesc, pose));
 	return 1;
 }
 
-static int renderWorld_destroyLight(lua_State* scriptState)
+static int renderWorld_lightDestroy(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->destroyLight(scriptStack.getLightInstance(2));
+	scriptStack.getRenderWorld(1)->lightDestroy(scriptStack.getLightInstance(2));
 	return 0;
 }
 
-static int renderWorld_getLightInstanceList(lua_State* scriptState)
+static int renderWorld_lightGetInstanceList(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushLightInstance(scriptStack.getRenderWorld(1)->getLight(scriptStack.getUnit(2)));
+	LightInstance lightInstance = scriptStack.getRenderWorld(1)->lightGet(scriptStack.getUnit(2));
+	if (lightInstance.i == UINT32_MAX)
+	{
+		scriptStack.pushNil();
+	}
+	else
+	{
+		scriptStack.pushLightInstance(lightInstance);
+	}
 	return 1;
 }
 
-static int renderWorld_getLightType(lua_State* scriptState)
+static int renderWorld_lightGetType(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	LightType::Enum type = scriptStack.getRenderWorld(1)->getLightType(scriptStack.getLightInstance(2));
+	LightType::Enum type = scriptStack.getRenderWorld(1)->lightGetType(scriptStack.getLightInstance(2));
 	scriptStack.pushString(lightInfoMap[type].name);
 	return 1;
 }
 
-static int renderWorld_getLightColor(lua_State* scriptState)
+static int renderWorld_lightGetColor(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushColor4(scriptStack.getRenderWorld(1)->getLightColor(scriptStack.getLightInstance(2)));
+	scriptStack.pushColor4(scriptStack.getRenderWorld(1)->lightGetColor(scriptStack.getLightInstance(2)));
 	return 1;
 }
 
-static int renderWorld_getLightRange(lua_State* scriptState)
+static int renderWorld_lightGetRange(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getRenderWorld(1)->getLightRange(scriptStack.getLightInstance(2)));
+	scriptStack.pushFloat(scriptStack.getRenderWorld(1)->lightGetRange(scriptStack.getLightInstance(2)));
 	return 1;
 }
 
-static int renderWorld_getLightIntensity(lua_State* scriptState)
+static int renderWorld_lightGetIntensity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getRenderWorld(1)->getLightIntensity(scriptStack.getLightInstance(2)));
+	scriptStack.pushFloat(scriptStack.getRenderWorld(1)->lightGetIntensity(scriptStack.getLightInstance(2)));
 	return 1;
 }
 
-static int renderWorld_getLightSpotAngle(lua_State* scriptState)
+static int renderWorld_lightGetSpotAngle(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getRenderWorld(1)->getLightSpotAngle(scriptStack.getLightInstance(2)));
+	scriptStack.pushFloat(scriptStack.getRenderWorld(1)->lightGetSpotAngle(scriptStack.getLightInstance(2)));
 	return 1;
 }
 
-static int renderWorld_setLightType(lua_State* scriptState)
+static int renderWorld_lightDebugDraw(lua_State* scriptState)
+{
+	ScriptStack scriptStack(scriptState);
+	scriptStack.getRenderWorld(1)->lightDebugDraw(scriptStack.getLightInstance(2), *scriptStack.getDebugLine(3));
+	return 0;
+}
+
+static int renderWorld_lightSetType(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 
@@ -1958,35 +2012,35 @@ static int renderWorld_setLightType(lua_State* scriptState)
 	const LightType::Enum lightType = getLightTypeFromName(name);
 	LUA_ASSERT(lightType != LightType::COUNT, stack, "Unknown light type: '%s'", name);
 
-	scriptStack.getRenderWorld(1)->setLightType(scriptStack.getLightInstance(2), lightType);
+	scriptStack.getRenderWorld(1)->lightSetType(scriptStack.getLightInstance(2), lightType);
 	return 0;
 }
 
-static int renderWorld_setLightColor(lua_State* scriptState)
+static int renderWorld_lightSetColor(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setLightColor(scriptStack.getLightInstance(2), scriptStack.getColor4(3));
+	scriptStack.getRenderWorld(1)->lightSetColor(scriptStack.getLightInstance(2), scriptStack.getColor4(3));
 	return 0;
 }
 
-static int renderWorld_setLightRange(lua_State* scriptState)
+static int renderWorld_lightSetRange(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setLightRange(scriptStack.getLightInstance(2), scriptStack.getFloat(3));
+	scriptStack.getRenderWorld(1)->lightSetRange(scriptStack.getLightInstance(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int renderWorld_setLightIntensity(lua_State* scriptState)
+static int renderWorld_lightSetIntensity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setLightIntensity(scriptStack.getLightInstance(2), scriptStack.getFloat(3));
+	scriptStack.getRenderWorld(1)->lightSetIntensity(scriptStack.getLightInstance(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int renderWorld_setLightSpotAngle(lua_State* scriptState)
+static int renderWorld_lightSetSpotAngle(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getRenderWorld(1)->setLightSpotAngle(scriptStack.getLightInstance(2), scriptStack.getFloat(3));
+	scriptStack.getRenderWorld(1)->lightSetSpotAngle(scriptStack.getLightInstance(2), scriptStack.getFloat(3));
 	return 0;
 }
 
@@ -1997,10 +2051,10 @@ static int renderWorld_enableDebugDrawing(lua_State* scriptState)
 	return 0;
 }
 
-static int physicsWorld_getActorInstanceList(lua_State* scriptState)
+static int physicsWorld_actorGetInstanceList(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	ActorInstance actorInstance = scriptStack.getPhysicsWorld(1)->getActor(scriptStack.getUnit(2));
+	ActorInstance actorInstance = scriptStack.getPhysicsWorld(1)->actorGet(scriptStack.getUnit(2));
 
 	if (actorInstance.i == UINT32_MAX)
 	{
@@ -2014,252 +2068,252 @@ static int physicsWorld_getActorInstanceList(lua_State* scriptState)
 	return 1;
 }
 
-static int physicsWorld_getActorWorldPosition(lua_State* scriptState)
+static int physicsWorld_actorGetWorldPosition(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->getActorWorldPosition(scriptStack.getActor(2)));
+	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->actorGetWorldPosition(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_getActorWorldRotation(lua_State* scriptState)
+static int physicsWorld_actorGetWorldRotation(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushQuaternion(scriptStack.getPhysicsWorld(1)->getActorWorldRotation(scriptStack.getActor(2)));
+	scriptStack.pushQuaternion(scriptStack.getPhysicsWorld(1)->actorGetWorldRotation(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_getActorWorldPose(lua_State* scriptState)
+static int physicsWorld_actorGetWorldPose(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushMatrix4x4(scriptStack.getPhysicsWorld(1)->getActorWorldPose(scriptStack.getActor(2)));
+	scriptStack.pushMatrix4x4(scriptStack.getPhysicsWorld(1)->actorGetWorldPose(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_teleportActorWorldPosition(lua_State* scriptState)
+static int physicsWorld_actorTeleportWorldPosition(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->teleportActorWorldPosition(scriptStack.getActor(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->actorTeleportWorldPosition(scriptStack.getActor(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_teleportActorWorldRotation(lua_State* scriptState)
+static int physicsWorld_actorTeleportWorldRotation(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->teleportActorWorldRotation(scriptStack.getActor(2), scriptStack.getQuaternion(3));
+	scriptStack.getPhysicsWorld(1)->actorTeleportWorldRotation(scriptStack.getActor(2), scriptStack.getQuaternion(3));
 	return 0;
 }
 
-static int physicsWorld_teleportActorWorldPose(lua_State* scriptState)
+static int physicsWorld_actorTeleportWorldPose(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->teleportActorWorldPose(scriptStack.getActor(2), scriptStack.getMatrix4x4(3));
+	scriptStack.getPhysicsWorld(1)->actorTeleportWorldPose(scriptStack.getActor(2), scriptStack.getMatrix4x4(3));
 	return 0;
 }
 
-static int physicsWorld_getActorCenterOfMass(lua_State* scriptState)
+static int physicsWorld_actorGetCenterOfMass(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->getActorCenterOfMass(scriptStack.getActor(2)));
+	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->actorGetCenterOfMass(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_enableActorGravity(lua_State* scriptState)
+static int physicsWorld_actorEnableGravity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->enableActorGravity(scriptStack.getActor(2));
+	scriptStack.getPhysicsWorld(1)->actorEnableGravity(scriptStack.getActor(2));
 	return 0;
 }
 
-static int physicsWorld_disableActorGravity(lua_State* scriptState)
+static int physicsWorld_actorDisableGravity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->disableActorGravity(scriptStack.getActor(2));
+	scriptStack.getPhysicsWorld(1)->actorDisableGravity(scriptStack.getActor(2));
 	return 0;
 }
 
-static int physicsWorld_enableActorCollision(lua_State* scriptState)
+static int physicsWorld_actorEnableCollision(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->enableActorCollision(scriptStack.getActor(2));
+	scriptStack.getPhysicsWorld(1)->actorEnableCollision(scriptStack.getActor(2));
 	return 0;
 }
 
-static int physicsWorld_disableActorCollision(lua_State* scriptState)
+static int physicsWorld_actorDisableCollision(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->disableActorCollision(scriptStack.getActor(2));
+	scriptStack.getPhysicsWorld(1)->actorDisableCollision(scriptStack.getActor(2));
 	return 0;
 }
 
-static int physicsWorld_setActorCollisionFilter(lua_State* scriptState)
+static int physicsWorld_actorSetCollisionFilter(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->setActorCollisionFilter(scriptStack.getActor(2), scriptStack.getStringId32(3));
+	scriptStack.getPhysicsWorld(1)->actorSetCollisionFilter(scriptStack.getActor(2), scriptStack.getStringId32(3));
 	return 0;
 }
 
-static int physicsWorld_setActorKinematic(lua_State* scriptState)
+static int physicsWorld_actorSetKinematic(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->setActorKinematic(scriptStack.getActor(2), scriptStack.getBool(3));
+	scriptStack.getPhysicsWorld(1)->actorSetKinematic(scriptStack.getActor(2), scriptStack.getBool(3));
 	return 0;
 }
 
-static int physicsWorld_moveActor(lua_State* scriptState)
+static int physicsWorld_actorMove(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->moveActor(scriptStack.getActor(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->actorMove(scriptStack.getActor(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_getIsStatic(lua_State* scriptState)
+static int physicsWorld_actorGetIsStatic(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->getIsStatic(scriptStack.getActor(2)));
+	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->actorGetIsStatic(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_getIsDynamic(lua_State* scriptState)
+static int physicsWorld_actorGetIsDynamic(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->getIsDynamic(scriptStack.getActor(2)));
+	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->actorGetIsDynamic(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_getIsKinematic(lua_State* scriptState)
+static int physicsWorld_actorGetIsKinematic(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->getIsKinematic(scriptStack.getActor(2)));
+	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->actorGetIsKinematic(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_getIsNonKinematic(lua_State* scriptState)
+static int physicsWorld_actorGetIsNonKinematic(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->getIsNonKinematic(scriptStack.getActor(2)));
+	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->actorGetIsNonKinematic(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_getActorLinearDamping(lua_State* scriptState)
+static int physicsWorld_actorGetLinearDamping(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getPhysicsWorld(1)->getActorLinearDamping(scriptStack.getActor(2)));
+	scriptStack.pushFloat(scriptStack.getPhysicsWorld(1)->actorGetLinearDamping(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_setActorLinearDamping(lua_State* scriptState)
+static int physicsWorld_actorSetLinearDamping(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->setActorLinearDamping(scriptStack.getActor(2), scriptStack.getFloat(3));
+	scriptStack.getPhysicsWorld(1)->actorSetLinearDamping(scriptStack.getActor(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int physicsWorld_getActorAngularDamping(lua_State* scriptState)
+static int physicsWorld_actorGetAngularDamping(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushFloat(scriptStack.getPhysicsWorld(1)->getActorAngularDamping(scriptStack.getActor(2)));
+	scriptStack.pushFloat(scriptStack.getPhysicsWorld(1)->actorGetAngularDamping(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_setActorAngularDamping(lua_State* scriptState)
+static int physicsWorld_actorSetAngularDamping(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->setActorAngularDamping(scriptStack.getActor(2), scriptStack.getFloat(3));
+	scriptStack.getPhysicsWorld(1)->actorSetAngularDamping(scriptStack.getActor(2), scriptStack.getFloat(3));
 	return 0;
 }
 
-static int physicsWorld_getActorLinearVelocity(lua_State* scriptState)
+static int physicsWorld_actorGetLinearVelocity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->getActorLinearVelocity(scriptStack.getActor(2)));
+	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->actorGetLinearVelocity(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_setActorLinearVelocity(lua_State* scriptState)
+static int physicsWorld_actorSetLinearVelocity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->setActorLinearVelocity(scriptStack.getActor(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->actorSetLinearVelocity(scriptStack.getActor(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_getActorAngularVelocity(lua_State* scriptState)
+static int physicsWorld_actorGetAngularVelocity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->getActorAngularVelocity(scriptStack.getActor(2)));
+	scriptStack.pushVector3(scriptStack.getPhysicsWorld(1)->actorGetAngularVelocity(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_setActorAngularVelocity(lua_State* scriptState)
+static int physicsWorld_actorSetAngularVelocity(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->setActorAngularVelocity(scriptStack.getActor(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->actorSetAngularVelocity(scriptStack.getActor(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_addActorImpulse(lua_State* scriptState)
+static int physicsWorld_actorAddImpulse(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->addActorImpulse(scriptStack.getActor(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->actorAddImpulse(scriptStack.getActor(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_addActorImpulseAt(lua_State* scriptState)
+static int physicsWorld_actorAddImpulseAt(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->addActorImpulseAt(scriptStack.getActor(2), scriptStack.getVector3(3), scriptStack.getVector3(4));
+	scriptStack.getPhysicsWorld(1)->actorAddImpulseAt(scriptStack.getActor(2), scriptStack.getVector3(3), scriptStack.getVector3(4));
 	return 0;
 }
 
-static int physicsWorld_addActorTorqueImpulse(lua_State* scriptState)
+static int physicsWorld_actorAddTorqueImpulse(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->addActorTorqueImpulse(scriptStack.getActor(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->actorAddTorqueImpulse(scriptStack.getActor(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_pushActor(lua_State* scriptState)
+static int physicsWorld_actorPush(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->pushActor(scriptStack.getActor(2), scriptStack.getVector3(3), scriptStack.getFloat(4));
+	scriptStack.getPhysicsWorld(1)->actorPush(scriptStack.getActor(2), scriptStack.getVector3(3), scriptStack.getFloat(4));
 	return 0;
 }
 
-static int physicsWorld_pushActorAt(lua_State* scriptState)
+static int physicsWorld_actorPushAt(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->pushActorAt(scriptStack.getActor(2), scriptStack.getVector3(3), scriptStack.getFloat(4), scriptStack.getVector3(5));
+	scriptStack.getPhysicsWorld(1)->actorPushAt(scriptStack.getActor(2), scriptStack.getVector3(3), scriptStack.getFloat(4), scriptStack.getVector3(5));
 	return 0;
 }
 
-static int physicsWorld_getIsSleeping(lua_State* scriptState)
+static int physicsWorld_actorGetIsSleeping(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->getIsSleeping(scriptStack.getActor(2)));
+	scriptStack.pushBool(scriptStack.getPhysicsWorld(1)->actorGetIsSleeping(scriptStack.getActor(2)));
 	return 1;
 }
 
-static int physicsWorld_wakeUp(lua_State* scriptState)
+static int physicsWorld_actorWakeUp(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->wakeUp(scriptStack.getActor(2));
+	scriptStack.getPhysicsWorld(1)->actorWakeUp(scriptStack.getActor(2));
 	return 0;
 }
 
-static int physicsWorld_getControllerInstanceList(lua_State* scriptState)
+static int physicsWorld_controllerGetInstanceList(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushController(scriptStack.getPhysicsWorld(1)->getController(scriptStack.getUnit(2)));
+	scriptStack.pushController(scriptStack.getPhysicsWorld(1)->controllerGet(scriptStack.getUnit(2)));
 	return 1;
 }
 
-static int physicsWorld_moveController(lua_State* scriptState)
+static int physicsWorld_controllerMove(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getPhysicsWorld(1)->moveController(scriptStack.getController(2), scriptStack.getVector3(3));
+	scriptStack.getPhysicsWorld(1)->controllerMove(scriptStack.getController(2), scriptStack.getVector3(3));
 	return 0;
 }
 
-static int physicsWorld_createJoint(lua_State* scriptState)
+static int physicsWorld_jointCreate(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
 	JointDesc jointDesc;
@@ -2271,7 +2325,7 @@ static int physicsWorld_createJoint(lua_State* scriptState)
 	jointDesc.hinge.lowerLimit = -3.14f / 4.0f;
 	jointDesc.hinge.upperLimit = 3.14f / 4.0f;
 	jointDesc.hinge.bounciness = 12.0f;
-	scriptStack.getPhysicsWorld(1)->createJoint(scriptStack.getActor(2), scriptStack.getActor(3), jointDesc);
+	scriptStack.getPhysicsWorld(1)->jointCreate(scriptStack.getActor(2), scriptStack.getActor(3), jointDesc);
 	return 0;
 }
 
@@ -2847,7 +2901,7 @@ static int material_setVector3(lua_State* scriptState)
 static int gui_getResolution(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	const Vector2 resolution = scriptStack.getGui(1)->getResolution();
+	const Vector2 resolution = scriptStack.getDebugGui(1)->getResolution();
 	scriptStack.pushInteger((int32_t)resolution.x);
 	scriptStack.pushInteger((int32_t)resolution.y);
 	return 2;
@@ -2856,21 +2910,21 @@ static int gui_getResolution(lua_State* scriptState)
 static int gui_move(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getGui(1)->move(scriptStack.getVector2(2));
+	scriptStack.getDebugGui(1)->move(scriptStack.getVector2(2));
 	return 0;
 }
 
 static int gui_getGuiFromScreen(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.pushVector2(scriptStack.getGui(1)->getGuiFromScreen(scriptStack.getVector2(2)));
+	scriptStack.pushVector2(scriptStack.getDebugGui(1)->getGuiFromScreen(scriptStack.getVector2(2)));
 	return 1;
 }
 
 static int gui_drawRectangle(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getGui(1)->drawRectangle(scriptStack.getVector2(2)
+	scriptStack.getDebugGui(1)->drawRectangle(scriptStack.getVector2(2)
 		, scriptStack.getVector2(3)
 		, scriptStack.getResourceId(4)
 		, scriptStack.getColor4(5)
@@ -2881,7 +2935,7 @@ static int gui_drawRectangle(lua_State* scriptState)
 static int gui_drawImage(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getGui(1)->drawImage(scriptStack.getVector2(2)
+	scriptStack.getDebugGui(1)->drawImage(scriptStack.getVector2(2)
 		, scriptStack.getVector2(3)
 		, scriptStack.getResourceId(4)
 		, scriptStack.getColor4(5)
@@ -2892,7 +2946,7 @@ static int gui_drawImage(lua_State* scriptState)
 static int gui_drawImageUv(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getGui(1)->drawImageUv(scriptStack.getVector2(2)
+	scriptStack.getDebugGui(1)->drawImageUv(scriptStack.getVector2(2)
 		, scriptStack.getVector2(3)
 		, scriptStack.getVector2(4)
 		, scriptStack.getVector2(5)
@@ -2905,7 +2959,7 @@ static int gui_drawImageUv(lua_State* scriptState)
 static int gui_drawText(lua_State* scriptState)
 {
 	ScriptStack scriptStack(scriptState);
-	scriptStack.getGui(1)->drawText(scriptStack.getVector2(2)
+	scriptStack.getDebugGui(1)->drawText(scriptStack.getVector2(2)
 		, scriptStack.getInteger(3)
 		, scriptStack.getString(4)
 		, scriptStack.getResourceId(5)
@@ -3126,6 +3180,7 @@ void loadApi(ScriptEnvironment& scriptEnvironment)
 
 	scriptEnvironment.setModuleConstructor("QuaternionBox", quaternionBox_constructor);
 
+	scriptEnvironment.addModuleFunction("Color4", "lerp", color4_lerp);
 	scriptEnvironment.addModuleFunction("Color4", "createBlack", color4_createBlack);
 	scriptEnvironment.addModuleFunction("Color4", "createWhite", color4_createWhite);
 	scriptEnvironment.addModuleFunction("Color4", "createRed", color4_createRed);
@@ -3226,38 +3281,39 @@ void loadApi(ScriptEnvironment& scriptEnvironment)
 	scriptEnvironment.addModuleFunction("Pad3", "getAxisId",      JOYPAD_FN(2, getAxisId));
 
 	scriptEnvironment.addModuleFunction("Pad4", "getName", JOYPAD_FN(3, getName));
-	scriptEnvironment.addModuleFunction("Pad4", "getIsConnected",    JOYPAD_FN(3, getIsConnected));
-	scriptEnvironment.addModuleFunction("Pad4", "getButtonsCount",  JOYPAD_FN(3, getButtonsCount));
-	scriptEnvironment.addModuleFunction("Pad4", "getAxesCount",     JOYPAD_FN(3, getAxesCount));
-	scriptEnvironment.addModuleFunction("Pad4", "getIsPressed",      JOYPAD_FN(3, getIsPressed));
-	scriptEnvironment.addModuleFunction("Pad4", "getIsReleased",     JOYPAD_FN(3, getIsReleased));
-	scriptEnvironment.addModuleFunction("Pad4", "getIsAnyPressed",  JOYPAD_FN(3, getIsAnyPressed));
+	scriptEnvironment.addModuleFunction("Pad4", "getIsConnected", JOYPAD_FN(3, getIsConnected));
+	scriptEnvironment.addModuleFunction("Pad4", "getButtonsCount", JOYPAD_FN(3, getButtonsCount));
+	scriptEnvironment.addModuleFunction("Pad4", "getAxesCount", JOYPAD_FN(3, getAxesCount));
+	scriptEnvironment.addModuleFunction("Pad4", "getIsPressed", JOYPAD_FN(3, getIsPressed));
+	scriptEnvironment.addModuleFunction("Pad4", "getIsReleased", JOYPAD_FN(3, getIsReleased));
+	scriptEnvironment.addModuleFunction("Pad4", "getIsAnyPressed", JOYPAD_FN(3, getIsAnyPressed));
 	scriptEnvironment.addModuleFunction("Pad4", "getIsAnyReleased", JOYPAD_FN(3, getIsAnyReleased));
-	scriptEnvironment.addModuleFunction("Pad4", "getAxis",         JOYPAD_FN(3, getAxis));
-	scriptEnvironment.addModuleFunction("Pad4", "getButtonName",  JOYPAD_FN(3, getButtonName));
-	scriptEnvironment.addModuleFunction("Pad4", "getAxisName",    JOYPAD_FN(3, getAxisName));
-	scriptEnvironment.addModuleFunction("Pad4", "getButtonId",    JOYPAD_FN(3, getButtonId));
-	scriptEnvironment.addModuleFunction("Pad4", "getAxisId",      JOYPAD_FN(3, getAxisId));
+	scriptEnvironment.addModuleFunction("Pad4", "getAxis", JOYPAD_FN(3, getAxis));
+	scriptEnvironment.addModuleFunction("Pad4", "getButtonName", JOYPAD_FN(3, getButtonName));
+	scriptEnvironment.addModuleFunction("Pad4", "getAxisName", JOYPAD_FN(3, getAxisName));
+	scriptEnvironment.addModuleFunction("Pad4", "getButtonId", JOYPAD_FN(3, getButtonId));
+	scriptEnvironment.addModuleFunction("Pad4", "getAxisId", JOYPAD_FN(3, getAxisId));
 
 	scriptEnvironment.addModuleFunction("World", "spawnUnit", world_spawnUnit);
 	scriptEnvironment.addModuleFunction("World", "spawnEmptyUnit", world_spawnEmptyUnit);
 	scriptEnvironment.addModuleFunction("World", "destroyUnit", world_destroyUnit);
 	scriptEnvironment.addModuleFunction("World", "getUnitListCount", world_getUnitListCount);
 	scriptEnvironment.addModuleFunction("World", "getUnitList", world_getUnitList);
-	scriptEnvironment.addModuleFunction("World", "getCamera", world_getCamera);
-	scriptEnvironment.addModuleFunction("World", "setCameraProjectionType", world_setCameraProjectionType);
-	scriptEnvironment.addModuleFunction("World", "getCameraProjectionType", world_getCameraProjectionType);
-	scriptEnvironment.addModuleFunction("World", "getCameraFov", world_getCameraFov);
-	scriptEnvironment.addModuleFunction("World", "setCameraFov", world_setCameraFov);
-	scriptEnvironment.addModuleFunction("World", "getCameraAspect", world_getCameraAspect);
-	scriptEnvironment.addModuleFunction("World", "setCameraAspect", world_setCameraAspect);
-	scriptEnvironment.addModuleFunction("World", "getCameraNearClipDistance", world_getCameraNearClipDistance);
-	scriptEnvironment.addModuleFunction("World", "setCameraNearClipDistance", world_setCameraNearClipDistance);
-	scriptEnvironment.addModuleFunction("World", "getCameraFarClipDistance", world_getCameraFarClipDistance);
-	scriptEnvironment.addModuleFunction("World", "setCameraFarClipDistance", world_setCameraFarClipDistance);
-	scriptEnvironment.addModuleFunction("World", "setCameraOrthographicMetrics", world_setCameraOrthographicMetrics);
-	scriptEnvironment.addModuleFunction("World", "getCameraWorldFromScreen", world_getCameraWorldFromScreen);
-	scriptEnvironment.addModuleFunction("World", "getCameraScreenFromWorld", world_getCameraScreenFromWorld);
+
+	scriptEnvironment.addModuleFunction("World", "cameraGet", world_cameraGet);
+	scriptEnvironment.addModuleFunction("World", "cameraCreate", world_cameraCreate);
+	scriptEnvironment.addModuleFunction("World", "cameraSetProjectionType", world_cameraSetProjectionType);
+	scriptEnvironment.addModuleFunction("World", "cameraGetProjectionType", world_cameraGetProjectionType);
+	scriptEnvironment.addModuleFunction("World", "cameraGetFov", world_cameraGetFov);
+	scriptEnvironment.addModuleFunction("World", "cameraSetFov", world_cameraSetFov);
+	scriptEnvironment.addModuleFunction("World", "cameraGetNearClipDistance", world_cameraGetNearClipDistance);
+	scriptEnvironment.addModuleFunction("World", "cameraSetNearClipDistance", world_cameraSetNearClipDistance);
+	scriptEnvironment.addModuleFunction("World", "cameraGetFarClipDistance", world_cameraGetFarClipDistance);
+	scriptEnvironment.addModuleFunction("World", "cameraSetFarClipDistance", world_cameraSetFarClipDistance);
+	scriptEnvironment.addModuleFunction("World", "cameraSetOrthographicMetrics", world_cameraSetOrthographicMetrics);
+	scriptEnvironment.addModuleFunction("World", "cameraGetWorldFromScreen", world_cameraGetWorldFromScreen);
+	scriptEnvironment.addModuleFunction("World", "cameraGetScreenFromWorld", world_cameraGetScreenFromWorld);
+
 	scriptEnvironment.addModuleFunction("World", "updateAnimations", world_updateAnimations);
 	scriptEnvironment.addModuleFunction("World", "updateScene", world_updateScene);
 	scriptEnvironment.addModuleFunction("World", "update", world_update);
@@ -3270,7 +3326,7 @@ void loadApi(ScriptEnvironment& scriptEnvironment)
 	scriptEnvironment.addModuleFunction("World", "setSoundVolume", world_setSoundVolume);
 	scriptEnvironment.addModuleFunction("World", "createDebugLine", world_createDebugLine);
 	scriptEnvironment.addModuleFunction("World", "destroyDebugLine", world_destroyDebugLine);
-	scriptEnvironment.addModuleFunction("World", "createScreenGui", world_createScreenGui);
+	scriptEnvironment.addModuleFunction("World", "createScreenDebugGui", world_createScreenDebugGui);
 	scriptEnvironment.addModuleFunction("World", "destroyGui", world_destroyGui);
 	scriptEnvironment.addModuleFunction("World", "loadLevel", world_loadLevel);
 	scriptEnvironment.addModuleFunction("World", "getSceneGraph", world_getSceneGraph);
@@ -3300,69 +3356,76 @@ void loadApi(ScriptEnvironment& scriptEnvironment)
 	scriptEnvironment.addModuleFunction("UnitManager", "create", unitManager_create);
 	scriptEnvironment.addModuleFunction("UnitManager", "getIsAlive", unitManager_getIsAlive);
 
-	scriptEnvironment.addModuleFunction("RenderWorld", "createMesh", renderWorld_createMesh);
-	scriptEnvironment.addModuleFunction("RenderWorld", "destroyMesh", renderWorld_destroyMesh);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getMeshInstanceList", renderWorld_getMeshInstanceList);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getMeshObb", renderWorld_getMeshObb);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getMeshRaycast", renderWorld_getMeshRaycast);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setMeshVisible", renderWorld_setMeshVisible);
-	scriptEnvironment.addModuleFunction("RenderWorld", "createSprite", renderWorld_createSprite);
-	scriptEnvironment.addModuleFunction("RenderWorld", "destroySprite", renderWorld_destroySprite);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getSpriteInstanceList", renderWorld_getSpriteInstanceList);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setSpriteFrame", renderWorld_setSpriteFrame);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setSpriteVisible", renderWorld_setSpriteVisible);
-	scriptEnvironment.addModuleFunction("RenderWorld", "createLight", renderWorld_createLight);
-	scriptEnvironment.addModuleFunction("RenderWorld", "destroyLight", renderWorld_destroyLight);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getLightInstanceList", renderWorld_getLightInstanceList);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getLightType", renderWorld_getLightType);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getLightColor", renderWorld_getLightColor);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getLightRange", renderWorld_getLightRange);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getLightIntensity", renderWorld_getLightIntensity);
-	scriptEnvironment.addModuleFunction("RenderWorld", "getLightSpotAngle", renderWorld_getLightSpotAngle);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setLightType", renderWorld_setLightType);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setLightColor", renderWorld_setLightColor);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setLightRange", renderWorld_setLightRange);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setLightIntensity", renderWorld_setLightIntensity);
-	scriptEnvironment.addModuleFunction("RenderWorld", "setLightSpotAngle", renderWorld_setLightSpotAngle);
+	scriptEnvironment.addModuleFunction("RenderWorld", "meshCreateMesh", renderWorld_meshCreate);
+	scriptEnvironment.addModuleFunction("RenderWorld", "meshDestroyMesh", renderWorld_meshDestroy);
+	scriptEnvironment.addModuleFunction("RenderWorld", "meshGetMeshInstanceList", renderWorld_meshGetInstanceList);
+	scriptEnvironment.addModuleFunction("RenderWorld", "meshGetMeshObb", renderWorld_meshGetObb);
+	scriptEnvironment.addModuleFunction("RenderWorld", "meshGetMeshRaycast", renderWorld_meshGetRaycast);
+	scriptEnvironment.addModuleFunction("RenderWorld", "meshSetMeshVisible", renderWorld_meshSetVisible);
+
+	scriptEnvironment.addModuleFunction("RenderWorld", "spriteCreate", renderWorld_spriteCreate);
+	scriptEnvironment.addModuleFunction("RenderWorld", "spriteDestroy", renderWorld_spriteDestroy);
+	scriptEnvironment.addModuleFunction("RenderWorld", "spriteGetInstanceList", renderWorld_spriteGetInstanceList);
+	scriptEnvironment.addModuleFunction("RenderWorld", "spriteSetFrame", renderWorld_spriteSetFrame);
+	scriptEnvironment.addModuleFunction("RenderWorld", "spriteSetVisible", renderWorld_spriteSetVisible);
+
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightCreate", renderWorld_lightCreate);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightDestroy", renderWorld_lightDestroy);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightGetInstanceList", renderWorld_lightGetInstanceList);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightGetType", renderWorld_lightGetType);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightGetColor", renderWorld_lightGetColor);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightGetRange", renderWorld_lightGetRange);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightGetIntensity", renderWorld_lightGetIntensity);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightGetSpotAngle", renderWorld_lightGetSpotAngle);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightDebugDraw", renderWorld_lightDebugDraw);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightSetType", renderWorld_lightSetType);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightSetColor", renderWorld_lightSetColor);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightSetRange", renderWorld_lightSetRange);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightSetIntensity", renderWorld_lightSetIntensity);
+	scriptEnvironment.addModuleFunction("RenderWorld", "lightSetSpotAngle", renderWorld_lightSetSpotAngle);
+
 	scriptEnvironment.addModuleFunction("RenderWorld", "enableDebugDrawing", renderWorld_enableDebugDrawing);
 
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorInstanceList", physicsWorld_getActorInstanceList);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorWorldPosition", physicsWorld_getActorWorldPosition);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorWorldRotation", physicsWorld_getActorWorldRotation);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorWorldPose", physicsWorld_getActorWorldPose);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "teleportActorWorldPosition", physicsWorld_teleportActorWorldPosition);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "teleportActorWorldRotation", physicsWorld_teleportActorWorldRotation);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "teleportActorWorldPose", physicsWorld_teleportActorWorldPose);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorCenterOfMass", physicsWorld_getActorCenterOfMass);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "enableActorGravity", physicsWorld_enableActorGravity);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "disableActorGravity", physicsWorld_disableActorGravity);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "enableActorCollision", physicsWorld_enableActorCollision);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "disableActorCollision", physicsWorld_disableActorCollision);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "setActorCollisionFilter", physicsWorld_setActorCollisionFilter);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "setActorKinematic", physicsWorld_setActorKinematic);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "moveActor", physicsWorld_moveActor);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getIsStatic", physicsWorld_getIsStatic);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getIsDynamic", physicsWorld_getIsDynamic);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getIsKinematic", physicsWorld_getIsKinematic);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getIsNonKinematic", physicsWorld_getIsNonKinematic);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorLinearDamping", physicsWorld_getActorLinearDamping);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "setActorLinearDamping", physicsWorld_setActorLinearDamping);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorAngularDamping", physicsWorld_getActorAngularDamping);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "setActorAngularDamping", physicsWorld_setActorAngularDamping);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorLinearVelocity", physicsWorld_getActorLinearVelocity);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "setActorLinearVelocity", physicsWorld_setActorLinearVelocity);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getActorAngularVelocity", physicsWorld_getActorAngularVelocity);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "setActorAngularVelocity", physicsWorld_setActorAngularVelocity);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "addActorImpulse", physicsWorld_addActorImpulse);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "addActorImpulseAt", physicsWorld_addActorImpulseAt);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "addActorTorqueImpulse", physicsWorld_addActorTorqueImpulse);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "pushActor", physicsWorld_pushActor);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "pushActorAt", physicsWorld_pushActorAt);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getIsSleeping", physicsWorld_getIsSleeping);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "wakeUp", physicsWorld_wakeUp);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "getControllerInstanceList", physicsWorld_getControllerInstanceList);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "moveController", physicsWorld_moveController);
-	scriptEnvironment.addModuleFunction("PhysicsWorld", "createJoint", physicsWorld_createJoint);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetInstanceList", physicsWorld_actorGetInstanceList);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetWorldPosition", physicsWorld_actorGetWorldPosition);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetWorldRotation", physicsWorld_actorGetWorldRotation);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetWorldPose", physicsWorld_actorGetWorldPose);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorTeleportWorldPosition", physicsWorld_actorTeleportWorldPosition);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorTeleportWorldRotation", physicsWorld_actorTeleportWorldRotation);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorTeleportWorldPose", physicsWorld_actorTeleportWorldPose);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetCenterOfMass", physicsWorld_actorGetCenterOfMass);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorEnableGravity", physicsWorld_actorEnableGravity);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorDisableGravity", physicsWorld_actorDisableGravity);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorEnableCollision", physicsWorld_actorEnableCollision);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorDisableCollision", physicsWorld_actorDisableCollision);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorSetCollisionFilter", physicsWorld_actorSetCollisionFilter);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorSetKinematic", physicsWorld_actorSetKinematic);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorMove", physicsWorld_actorMove);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetIsStatic", physicsWorld_actorGetIsStatic);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetIsDynamic", physicsWorld_actorGetIsDynamic);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetIsKinematic", physicsWorld_actorGetIsKinematic);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetIsNonKinematic", physicsWorld_actorGetIsNonKinematic);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetLinearDamping", physicsWorld_actorGetLinearDamping);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorSetLinearDamping", physicsWorld_actorSetLinearDamping);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetAngularDamping", physicsWorld_actorGetAngularDamping);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorSetAngularDamping", physicsWorld_actorSetAngularDamping);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetLinearVelocity", physicsWorld_actorGetLinearVelocity);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorSetLinearVelocity", physicsWorld_actorSetLinearVelocity);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetAngularVelocity", physicsWorld_actorGetAngularVelocity);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorSetAngularVelocity", physicsWorld_actorSetAngularVelocity);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorAddImpulse", physicsWorld_actorAddImpulse);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorAddImpulseAt", physicsWorld_actorAddImpulseAt);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorAddTorqueImpulse", physicsWorld_actorAddTorqueImpulse);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorPush", physicsWorld_actorPush);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorPushAt", physicsWorld_actorPushAt);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorGetIsSleeping", physicsWorld_actorGetIsSleeping);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "actorWakeUp", physicsWorld_actorWakeUp);
+
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "controllerGetInstanceList", physicsWorld_controllerGetInstanceList);
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "controllerMove", physicsWorld_controllerMove);
+
+	scriptEnvironment.addModuleFunction("PhysicsWorld", "jointCreate", physicsWorld_jointCreate);
+
 	scriptEnvironment.addModuleFunction("PhysicsWorld", "getGravity", physicsWorld_getGravity);
 	scriptEnvironment.addModuleFunction("PhysicsWorld", "setGravity", physicsWorld_setGravity);
 	scriptEnvironment.addModuleFunction("PhysicsWorld", "raycast", physicsWorld_raycast);
@@ -3423,13 +3486,13 @@ void loadApi(ScriptEnvironment& scriptEnvironment)
 	scriptEnvironment.addModuleFunction("Material", "setVector2", material_setVector2);
 	scriptEnvironment.addModuleFunction("Material", "setVector3", material_setVector3);
 
-	scriptEnvironment.addModuleFunction("Gui", "getResolution", gui_getResolution);
-	scriptEnvironment.addModuleFunction("Gui", "move", gui_move);
-	scriptEnvironment.addModuleFunction("Gui", "getGuiFromScreen", gui_getGuiFromScreen);
-	scriptEnvironment.addModuleFunction("Gui", "drawRectangle", gui_drawRectangle);
-	scriptEnvironment.addModuleFunction("Gui", "drawImage", gui_drawImage);
-	scriptEnvironment.addModuleFunction("Gui", "drawImageUv", gui_drawImageUv);
-	scriptEnvironment.addModuleFunction("Gui", "drawText", gui_drawText);
+	scriptEnvironment.addModuleFunction("DebugGui", "getResolution", gui_getResolution);
+	scriptEnvironment.addModuleFunction("DebugGui", "move", gui_move);
+	scriptEnvironment.addModuleFunction("DebugGui", "getGuiFromScreen", gui_getGuiFromScreen);
+	scriptEnvironment.addModuleFunction("DebugGui", "drawRectangle", gui_drawRectangle);
+	scriptEnvironment.addModuleFunction("DebugGui", "drawImage", gui_drawImage);
+	scriptEnvironment.addModuleFunction("DebugGui", "drawImageUv", gui_drawImageUv);
+	scriptEnvironment.addModuleFunction("DebugGui", "drawText", gui_drawText);
 
 	scriptEnvironment.addModuleFunction("Display", "getModes", display_getModes);
 	scriptEnvironment.addModuleFunction("Display", "setMode", display_setMode);

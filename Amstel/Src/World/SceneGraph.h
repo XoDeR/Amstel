@@ -10,9 +10,13 @@
 namespace Rio
 {
 
-// Represents a collection of nodes, possibly linked together to form a tree
+// Collection of nodes, possibly linked together to form a tree
 struct SceneGraph
 {
+private:
+	uint32_t marker = 0;
+public:
+
 	struct Pose
 	{
 		Vector3 position;
@@ -24,10 +28,6 @@ struct SceneGraph
 
 	struct InstanceData
 	{
-		InstanceData()
-		{
-		}
-
 		uint32_t size = 0;
 		uint32_t capacity = 0;
 		void* buffer = nullptr;
@@ -88,8 +88,6 @@ struct SceneGraph
 	void setLocal(TransformInstance i);
 	void transform(const Matrix4x4& parent, TransformInstance i);
 
-	static const uint32_t MARKER = 0x63a44dbf;
-	uint32_t marker;
 	Allocator& allocator;
 	InstanceData instanceData;
 	HashMap<UnitId, uint32_t> unitIdMap;

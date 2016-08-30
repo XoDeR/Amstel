@@ -80,7 +80,7 @@ void UnitManager::unregisterDestroyFunction(void* userPtr)
 		}
 	}
 
-	RIO_ASSERT(false, "Bad destroy function");
+	RIO_FATAL("Bad destroy function");
 }
 
 void UnitManager::triggerDestroyCallbacks(UnitId id)

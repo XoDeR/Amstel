@@ -6,7 +6,7 @@
 	#define WIN32_LEAN_AND_MEAN
 #endif // WIN32_LEAN_AND_MEAN
 
-#include <windows.h>
+#include <Windows.h>
 
 #undef NEAR
 #undef FAR
@@ -18,5 +18,3 @@
 #undef max
 #undef rad1
 #undef DELETE
-
-#define __va_copy(dest, src) (dest = src)

@@ -46,10 +46,10 @@ struct CommandLine
 			;
 	}
 
-	const char* getParameter(const char* longOpt, char shortOpt = '\0')
+	const char* getParameter(int i, const char* longOpt, char shortOpt = '\0')
 	{
 		int argumentListCount = findArgument(longOpt, shortOpt);
-		return argumentListCount < this->argumentListCount ? this->argumentList[argumentListCount + 1] : nullptr;
+		return argumentListCount + i < this->argumentListCount ? this->argumentList[argumentListCount + i + 1] : nullptr;
 	}
 
 	bool hasArgument(const char* longOpt, char shortOpt = '\0')

@@ -12,15 +12,13 @@ namespace Rio
 
 class Level
 {
+private:
+	uint32_t marker;
 public:
 	Level(Allocator& a, UnitManager& unitManager, World& world, const LevelResource& levelResource);
 	~Level();
 	void load(const Vector3& position, const Quaternion& rotation);
-
-	static const uint32_t MARKER = 0x1f2b43fe;
 private:
-	uint32_t marker;
-
 	Allocator* allocator;
 	UnitManager* unitManager;
 	World* world;

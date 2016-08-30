@@ -1,14 +1,14 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Intersection.h"
-#include "Core/Math/Plane.h"
+#include "Core/Math/Plane3.h"
 #include "Core/Math/Sphere.h"
 #include "Core/Math/Vector3.h"
 
 namespace Rio
 {
 
-float getRayPlaneIntersection(const Vector3& from, const Vector3& direction, const Plane& p)
+float getRayPlaneIntersection(const Vector3& from, const Vector3& direction, const Plane3& p)
 {
 	const float num = dot(from, p.n);
 	const float den = dot(direction, p.n);
@@ -23,7 +23,7 @@ float getRayPlaneIntersection(const Vector3& from, const Vector3& direction, con
 
 float getRayDiscIntersection(const Vector3& from, const Vector3& direction, const Vector3& center, float radius, const Vector3& normal)
 {
-	const Plane p = PlaneFn::createPlaneFromPointAndNormal(center, normal);
+	const Plane3 p = Plane3Fn::createPlane3FromPointAndNormal(center, normal);
 	const float t = getRayPlaneIntersection(from, direction, p);
 
 	if (t == -1.0f)
@@ -260,7 +260,7 @@ float getRayMeshIntersection(const Vector3& from, const Vector3& direction, cons
 	return hit ? tMin : -1.0f;
 }
 
-bool getThreePlanesIntersection(const Plane& a, const Plane& b, const Plane& c, Vector3& ip)
+bool getThreePlanesIntersection(const Plane3& a, const Plane3& b, const Plane3& c, Vector3& ip)
 {
 	const Vector3 na = a.n;
 	const Vector3 nb = b.n;
@@ -285,20 +285,20 @@ bool getThreePlanesIntersection(const Plane& a, const Plane& b, const Plane& c, 
 
 bool getFrustumSphereIntersection(const Frustum& f, const Sphere& s)
 {
-	if (PlaneFn::getDistanceToPoint(f.left, s.c) < -s.r ||
-		PlaneFn::getDistanceToPoint(f.right, s.c) < -s.r)
+	if (Plane3Fn::getDistanceToPoint(f.left, s.c) < -s.r ||
+		Plane3Fn::getDistanceToPoint(f.right, s.c) < -s.r)
 	{
 		return false;
 	}
 
-	if (PlaneFn::getDistanceToPoint(f.bottom, s.c) < -s.r ||
-		PlaneFn::getDistanceToPoint(f.top, s.c) < -s.r)
+	if (Plane3Fn::getDistanceToPoint(f.bottom, s.c) < -s.r ||
+		Plane3Fn::getDistanceToPoint(f.top, s.c) < -s.r)
 	{
 		return false;
 	}
 
-	if (PlaneFn::getDistanceToPoint(f.near, s.c) < -s.r ||
-		PlaneFn::getDistanceToPoint(f.far, s.c) < -s.r)
+	if (Plane3Fn::getDistanceToPoint(f.near, s.c) < -s.r ||
+		Plane3Fn::getDistanceToPoint(f.far, s.c) < -s.r)
 	{
 		return false;
 	}
@@ -318,84 +318,84 @@ bool getFrustumBoxIntersection(const Frustum& f, const Aabb& b)
 	const Vector3 v7 = AabbFn::getVertex(b, 7);
 
 	uint8_t out = 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v0) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v1) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v2) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v3) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v4) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v5) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v6) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.left, v7) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v0) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v1) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v2) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v3) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v4) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v5) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v6) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.left, v7) < 0.0f) ? 1 : 0;
 	if (out == 8)
 	{
 		return false;
 	}
 
 	out = 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v0) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v1) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v2) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v3) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v4) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v5) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v6) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.right, v7) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v0) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v1) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v2) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v3) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v4) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v5) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v6) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.right, v7) < 0.0f) ? 1 : 0;
 	if (out == 8)
 	{
 		return false;
 	}
 
 	out = 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v0) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v1) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v2) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v3) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v4) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v5) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v6) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.bottom, v7) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v0) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v1) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v2) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v3) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v4) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v5) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v6) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.bottom, v7) < 0.0f) ? 1 : 0;
 	if (out == 8)
 	{
 		return false;
 	}
 
 	out = 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v0) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v1) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v2) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v3) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v4) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v5) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v6) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.top, v7) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v0) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v1) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v2) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v3) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v4) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v5) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v6) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.top, v7) < 0.0f) ? 1 : 0;
 	if (out == 8)
 	{
 		return false;
 	}
 
 	out = 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v0) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v1) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v2) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v3) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v4) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v5) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v6) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.near, v7) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v0) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v1) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v2) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v3) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v4) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v5) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v6) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.near, v7) < 0.0f) ? 1 : 0;
 	if (out == 8)
 	{
 		return false;
 	}
 
 	out = 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v0) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v1) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v2) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v3) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v4) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v5) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v6) < 0.0f) ? 1 : 0;
-	out += (PlaneFn::getDistanceToPoint(f.far, v7) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v0) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v1) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v2) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v3) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v4) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v5) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v6) < 0.0f) ? 1 : 0;
+	out += (Plane3Fn::getDistanceToPoint(f.far, v7) < 0.0f) ? 1 : 0;
 	if (out == 8)
 	{
 		return false;

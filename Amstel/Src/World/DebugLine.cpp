@@ -1,5 +1,6 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "World/DebugLine.h"
+
 #include "Core/Math/Color4.h"
 #include "Core/Math/MathUtils.h"
 #include "Core/Math/Matrix4x4.h"
@@ -19,7 +20,7 @@ namespace Rio
 {
 
 DebugLine::DebugLine(bool depthTest)
-	: marker(MARKER)
+	: marker(DEBUG_LINE_MARKER)
 	, shaderNameHash(depthTest ? "debugLine" : "debugLineNoDepthTest")
 {
 	vertexDecl.begin()

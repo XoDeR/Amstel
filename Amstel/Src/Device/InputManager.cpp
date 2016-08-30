@@ -128,6 +128,16 @@ static const char* touchButtonNameList[] =
 };
 RIO_STATIC_ASSERT(RIO_COUNTOF(touchButtonNameList) == TouchButton::COUNT);
 
+static const char* touchAxisNameList[] =
+{
+	"pointer_0", // TouchAxis::POINTER_0
+	"pointer_1", // TouchAxis::POINTER_1
+	"pointer_2", // TouchAxis::POINTER_2
+	"pointer_3"  // TouchAxis::POINTER_3
+};
+RIO_STATIC_ASSERT(RIO_COUNTOF(touchAxisNameList) == TouchAxis::COUNT);
+
+
 static const char* joypadButtonNameList[] =
 {
 	"up",             // JoypadButton::UP
@@ -175,9 +185,9 @@ InputManager::InputManager(Allocator& a)
 	touch = InputDeviceFn::create(*allocator
 		, "Touch"
 		, TouchButton::COUNT
-		, 0
+		, TouchAxis::COUNT
 		, touchButtonNameList
-		, nullptr
+		, touchAxisNameList
 		);
 
 	for (uint8_t i = 0; i < RIO_MAX_JOYPADS; ++i)

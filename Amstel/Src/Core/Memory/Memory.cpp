@@ -5,30 +5,32 @@
 
 #include <stdlib.h> // malloc
 
-// forbidden usual global operators delete and new
-// TODO disabled temporarily
+#define CPP_NEW_DELETE_DISABLED 0
+#if CPP_NEW_DELETE_DISABLED
 
-// void* operator new(size_t) throw (std::bad_alloc)
-// {
-// 	RIO_ASSERT(false, "operator new forbidden");
-// 	return nullptr;
-// }
+// usual global operators delete and new forbidden
+ void* operator new(size_t) throw (std::bad_alloc)
+ {
+ 	RIO_FATAL("operator new forbidden");
+ 	return nullptr;
+ }
 
-// void* operator new[](size_t) throw (std::bad_alloc)
-// {
-// 	RIO_ASSERT(false, "operator new[] forbidden");
-// 	return nullptr;
-// }
+ void* operator new[](size_t) throw (std::bad_alloc)
+ {
+	RIO_FATAL("operator new[] forbidden");
+	return nullptr;
+ }
 
-// void operator delete(void*) throw ()
-// {
-// 	RIO_ASSERT(false, "operator delete forbidden");
-// }
+ void operator delete(void*) throw ()
+ {
+	 RIO_FATAL("operator delete forbidden");
+ }
 
-// void operator delete[](void*) throw ()
-// {
-//	RIO_ASSERT(false, "operator delete[] forbidden");
-// }
+ void operator delete[](void*) throw ()
+ {
+	 RIO_FATAL("operator delete[] forbidden");
+ }
+#endif //CPP_NEW_DELETE_DISABLED
 
 namespace Rio
 {

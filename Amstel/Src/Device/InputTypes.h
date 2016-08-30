@@ -7,6 +7,17 @@ namespace Rio
 class InputManager;
 struct InputDevice;
 
+struct InputDeviceType
+{
+	enum Enum
+	{
+		KEYBOARD,
+		MOUSE,
+		TOUCHSCREEN,
+		JOYPAD
+	};
+};
+
 struct KeyboardButton
 {
 	enum Enum
@@ -140,6 +151,18 @@ struct MouseAxis
 };
 
 struct TouchButton
+{
+	enum Enum
+	{
+		POINTER_0,
+		POINTER_1,
+		POINTER_2,
+		POINTER_3,
+		COUNT
+	};
+};
+
+struct TouchAxis
 {
 	enum Enum
 	{

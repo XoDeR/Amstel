@@ -1,6 +1,6 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Device/ConsoleServer.h"
-#include "Core/Containers/Map.h"
+#include "Core/Json/JsonObject.h"
 #include "Core/Json/JsonR.h"
 #include "Core/Containers/SortMap.h"
 #include "Core/Strings/StringId.h"
@@ -12,7 +12,7 @@ namespace Rio
 
 ConsoleServer::ConsoleServer(Allocator& a)
 	: clientList(a)
-	, commandDataList(a)
+	, commandFunctionMap(a)
 {
 }
 
@@ -79,8 +79,8 @@ void ConsoleServer::send(const char* json)
 void ConsoleServer::update()
 {
 	TcpSocket client;
-	AcceptResult result = server.acceptNonblock(client);
-	if (result.error == AcceptResult::NO_ERROR)
+	AcceptResult acceptResult = server.acceptNonblock(client);
+	if (acceptResult.error == AcceptResult::NO_ERROR)
 	{
 		addClient(client);
 	}
@@ -91,8 +91,8 @@ void ConsoleServer::update()
 	// Update all clients
 	for (uint32_t i = 0; i < VectorFn::getCount(clientList); ++i)
 	{
-		ReadResult rr = updateClient(clientList[i]);
-		if (rr.error != ReadResult::NO_ERROR)
+		ReadResult readResult = updateClient(clientList[i]);
+		if (readResult.error != ReadResult::NO_ERROR)
 		{
 			ArrayFn::pushBack(toRemove, i);
 		}
@@ -161,12 +161,10 @@ void ConsoleServer::process(TcpSocket client, const char* json)
 	JsonObject jsonObject(ta);
 	JsonRFn::parse(json, jsonObject);
 
-	CommandData commandData;
-	commandData = SortMapFn::get(commandDataList, JsonRFn::parseStringId(jsonObject["type"]), commandData);
-
-	if (commandData.commandFunction != nullptr)
+	CommandFunction commandFunction = SortMapFn::get(commandFunctionMap, JsonRFn::parseStringId(jsonObject["type"]), (CommandFunction)nullptr);
+	if (commandFunction != nullptr)
 	{
-		commandData.commandFunction(commandData.data, *this, client, json);
+		commandFunction(*this, client, json);
 	}
 	else
 	{
@@ -174,17 +172,13 @@ void ConsoleServer::process(TcpSocket client, const char* json)
 	}
 }
 
-void ConsoleServer::registerCommand(StringId32 type, CommandFunction commandFunction, void* data)
+void ConsoleServer::registerCommand(const char* type, CommandFunction commandFunction)
 {
-	RIO_ASSERT(!SortMapFn::has(commandDataList, type), "Command type already registered");
+	RIO_ASSERT_NOT_NULL(type);
 	RIO_ASSERT_NOT_NULL(commandFunction);
 
-	CommandData commandData;
-	commandData.commandFunction = commandFunction;
-	commandData.data = data;
-
-	SortMapFn::set(commandDataList, type, commandData);
-	SortMapFn::sort(commandDataList);
+	SortMapFn::set(commandFunctionMap, StringId32(type), commandFunction);
+	SortMapFn::sort(commandFunctionMap);
 }
 
 } // namespace Rio

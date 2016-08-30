@@ -24,7 +24,15 @@ struct JsonValueType
 using JsonArray = Array<const char*>;
 
 // Map from key to pointers to json-encoded data
-using JsonObject = Map<FixedString, const char*>;
+struct JsonObject
+{
+	JsonObject(Allocator& a);
+
+	const char* operator[](const char* key) const;
+	const char* operator[](const FixedString& key) const;
+
+	Map<FixedString, const char*> map;
+};
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

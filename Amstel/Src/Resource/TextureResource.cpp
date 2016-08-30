@@ -1,8 +1,9 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/TextureResource.h"
-#include "Core/Containers/Map.h"
+
 #include "Core/FileSystem/ReaderWriter.h"
 #include "Core/Json/JsonR.h"
+#include "Core/Json/JsonObject.h"
 #include "Core/Base/Os.h"
 #include "Core/Strings/StringStream.h"
 #include "Resource/CompileOptions.h"
@@ -31,7 +32,7 @@
 namespace Rio
 {
 
-namespace TextureResourceFn
+namespace TextureResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
@@ -115,7 +116,7 @@ namespace TextureResourceFn
 		a.deallocate(resource);
 	}
 
-} // namespace TextureResourceFn
+} // namespace TextureResourceInternalFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

@@ -37,14 +37,16 @@ namespace OsFn
 			}
 
 			TempAllocator512 ta;
-			DynamicString fileName(dname, ta);
+			DynamicString fileName(, ta);
+			fileName.set(dname, getStringLength32(dname));
 			VectorFn::pushBack(files, fileName);
 		}
 
 		closedir(directory);
 #elif RIO_PLATFORM_WINDOWS
 		TempAllocator1024 ta;
-		DynamicString currentPath(path, ta);
+		DynamicString currentPath(ta);
+		currentPath += path;
 		currentPath += "\\*";
 
 		WIN32_FIND_DATA ffd;
@@ -64,7 +66,8 @@ namespace OsFn
 			}
 
 			TempAllocator512 ta;
-			DynamicString fileNameStr(fileName, ta);
+			DynamicString fileNameStr(ta);
+			fileNameStr.set(fileName, getStringLength32(fileName));
 			VectorFn::pushBack(files, fileNameStr);
 		}
 		while (FindNextFile(file, &ffd) != 0);
@@ -77,7 +80,8 @@ namespace OsFn
 	{
 #if RIO_PLATFORM_POSIX
 		TempAllocator512 ta;
-		DynamicString cmd(path, ta);
+		DynamicString cmd(ta);
+		cmd += path;
 		cmd += " 2>&1 ";
 		cmd += args;
 		FILE* file = popen(cmd.getCStr(), "r");

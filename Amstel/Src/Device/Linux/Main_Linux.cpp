@@ -9,13 +9,15 @@
 #include "Core/Thread/Thread.h"
 #include "Core/UnitTests.cpp"
 #include "Device/Device.h"
-#include "Device/OsEventQueue.h"
+#include "Device/DeviceEventQueue.h"
 #include "Device/Window.h"
 #include "Resource/PhysicsResource.h"
 
 #include <bgfx/bgfxplatform.h>
+
 #include <stdlib.h>
 #include <string.h> // memset
+
 #include <X11/extensions/Xrandr.h>
 #include <X11/Xatom.h>
 #include <X11/XKBlib.h>
@@ -171,9 +173,9 @@ static uint16_t deadZoneList[] =
 
 struct JoypadEvent
 {
-	uint32_t time;  // event timestamp in milliseconds
+	uint32_t time; // event timestamp in milliseconds
 	int16_t value; // value 
-	uint8_t type;   // event type 
+	uint8_t type; // event type 
 	uint8_t number; // axis/button number
 };
 
@@ -205,7 +207,7 @@ struct Joypad
 		}
 	}
 
-	void update(OsEventQueue& queue)
+	void update(DeviceEventQueue& queue)
 	{
 		JoypadEvent ev;
 		memset(&ev, 0, sizeof(ev));
@@ -217,7 +219,7 @@ struct Joypad
 
 			if (connected != isConnectedList[i])
 			{
-				queue.pushJoypadEvent(i, connected);
+				queue.pushStatusEvent(InputDeviceType::JOYPAD, i, connected);
 			}
 
 			isConnectedList[i] = connected;
@@ -227,7 +229,7 @@ struct Joypad
 				continue;
 			}
 
-			while(read(fileDescriptor, &ev, sizeof(ev)) != -1)
+			while (read(fileDescriptor, &ev, sizeof(ev)) != -1)
 			{
 				const uint8_t number = ev.number;
 				const int16_t val = ev.value;
@@ -256,25 +258,29 @@ struct Joypad
 							: 0.0f
 							;
 
-						queue.pushJoypadEvent(i
+						queue.pushAxisEvent(InputDeviceType::JOYPAD
+							, i
 							, number > 2 ? 1 : 0
 							, values[0]
 							, -values[1]
 							, values[2]
 							);
-						break;
 					}
+					break;
 					case JS_EVENT_BUTTON:
 					{
 						if (ev.number < RIO_COUNTOF(joypadButtonList))
 						{
-							queue.pushJoypadEvent(i
+							queue.pushButtonEvent(InputDeviceType::JOYPAD
+								, i
 								, joypadButtonList[ev.number]
 								, val == 1
 								);
 						}
-						break;
 					}
+					break;
+					default:
+						break;
 				}
 			}
 		}
@@ -347,7 +353,7 @@ struct LinuxDevice
 
 		while (exitIsRequested == false)
 		{
-			joypad.update(osEventQueue);
+			joypad.update(deviceEventQueue);
 
 			while (XPending(x11Display))
 			{
@@ -358,34 +364,41 @@ struct LinuxDevice
 				{
 					case EnterNotify:
 					{
-						osEventQueue.pushMouseEvent(event.xcrossing.x, event.xcrossing.y);
-						break;
+						deviceEventQueue.pushAxisEvent(InputDeviceType::MOUSE
+							, 0
+							, MouseAxis::CURSOR
+							, event.xcrossing.x
+							, event.xcrossing.y
+							, 0.0f
+							);
 					}
+					break;
 					case ClientMessage:
 					{
 						if ((Atom)event.xclient.data.l[0] == wmDeleteMessage)
 						{
-							osEventQueue.pushExitEvent(0);
+							deviceEventQueue.pushExitEvent();
 						}
-						break;
 					}
+					break;
 					case ConfigureNotify:
 					{
-						osEventQueue.pushMetricsEvent(event.xconfigure.x
-							, event.xconfigure.y
-							, event.xconfigure.width
+						deviceEventQueue.pushResolutionEvent(event.xconfigure.width
 							, event.xconfigure.height
 							);
-						break;
 					}
+					break;
 					case ButtonPress:
 					case ButtonRelease:
 					{
 						if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
 						{
-							osEventQueue.pushMouseEvent(event.xbutton.x
-								, event.xbutton.y
+							deviceEventQueue.pushAxisEvent(InputDeviceType::MOUSE
+								, 0
+								, MouseAxis::WHEEL
+								, 0.0f
 								, event.xbutton.button == Button4 ? 1.0f : -1.0f
+								, 0.0f
 								);
 							break;
 						}
@@ -401,19 +414,25 @@ struct LinuxDevice
 
 						if (mouseButton != MouseButton::COUNT)
 						{
-							osEventQueue.pushMouseEvent(event.xbutton.x
-								, event.xbutton.y
+							deviceEventQueue.pushButtonEvent(InputDeviceType::MOUSE
+								, 0
 								, mouseButton
 								, event.type == ButtonPress
 								);
 						}
-						break;
 					}
+					break;
 					case MotionNotify:
 					{
-						osEventQueue.pushMouseEvent(event.xmotion.x, event.xmotion.y);
-						break;
+						deviceEventQueue.pushAxisEvent(InputDeviceType::MOUSE
+							, 0
+							, MouseAxis::CURSOR
+							, event.xmotion.x
+							, event.xmotion.y
+							, 0.0f
+							);
 					}
+					break;
 					case KeyPress:
 					case KeyRelease:
 					{
@@ -422,19 +441,25 @@ struct LinuxDevice
 
 						if (keyboardButton != KeyboardButton::COUNT)
 						{
-							osEventQueue.pushKeyboardEvent(keyboardButton, event.type == KeyPress);
+							deviceEventQueue.pushButtonEvent(InputDeviceType::KEYBOARD
+								, 0
+								, keyboardButton
+								, event.type == KeyPress
+								);
 						}
-						break;
 					}
+					break;
 					case KeymapNotify:
 					{
 						XRefreshKeyboardMapping(&event.xmapping);
-						break;
+						
 					}
+					break;
 					default:
 					{
-						break;
+						
 					}
+					break;
 				}
 			}
 
@@ -470,7 +495,7 @@ public:
 	Atom wmDeleteMessage;
 	XRRScreenConfiguration* screenConfig;
 	bool x11DetectableAutorepeat = false;
-	OsEventQueue osEventQueue;
+	DeviceEventQueue deviceEventQueue;
 	Joypad joypad;
 };
 
@@ -479,18 +504,13 @@ static LinuxDevice linuxDevice;
 struct WindowX11 : public Window
 {
 public:
-	WindowX11()
-	{
-		this->x11Display = linuxDevice.x11Display;
-	}
-
 	void open(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t parent)
 	{
-		int screen = DefaultScreen(x11Display);
-		int depth = DefaultDepth(x11Display, screen);
-		Visual* visual = DefaultVisual(x11Display, screen);
+		int screen = DefaultScreen(linuxDevice.x11Display);
+		int depth = DefaultDepth(linuxDevice.x11Display, screen);
+		Visual* visual = DefaultVisual(linuxDevice.x11Display, screen);
 
-		::Window rootWindow = RootWindow(x11Display, screen);
+		::Window rootWindow = RootWindow(linuxDevice.x11Display, screen);
 		::Window parentWindow = (parent == 0) ? rootWindow : (::Window)parent;
 
 		// Create main window
@@ -514,12 +534,12 @@ public:
 		else
 		{
 			XWindowAttributes parentAttributes;
-			XGetWindowAttributes(x11Display, parentWindow, &parentAttributes);
+			XGetWindowAttributes(linuxDevice.x11Display, parentWindow, &parentAttributes);
 			depth = parentAttributes.depth;
 			visual = parentAttributes.visual;
 		}
 
-		x11Window = XCreateWindow(x11Display
+		x11Window = XCreateWindow(linuxDevice.x11Display
 			, parentWindow
 			, x
 			, y
@@ -541,45 +561,45 @@ public:
 		Colormap colormap;
 		static char noData[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-		colormap = XDefaultColormap(x11Display, screen);
-		XAllocNamedColor(x11Display, colormap, "black", &black, &dummy);
-		bitmapNoData = XCreateBitmapFromData(x11Display, x11Window, noData, 8, 8);
-		x11HiddenCursor = XCreatePixmapCursor(x11Display, bitmapNoData, bitmapNoData, &black, &black, 0, 0);
+		colormap = XDefaultColormap(linuxDevice.x11Display, screen);
+		XAllocNamedColor(linuxDevice.x11Display, colormap, "black", &black, &dummy);
+		bitmapNoData = XCreateBitmapFromData(linuxDevice.x11Display, x11Window, noData, 8, 8);
+		x11HiddenCursor = XCreatePixmapCursor(linuxDevice.x11Display, bitmapNoData, bitmapNoData, &black, &black, 0, 0);
 
-		wmDeleteMessage = XInternAtom(x11Display, "WM_DELETE_WINDOW", False);
-		XSetWMProtocols(x11Display, x11Window, &wmDeleteMessage, 1);
+		wmDeleteMessage = XInternAtom(linuxDevice.x11Display, "WM_DELETE_WINDOW", False);
+		XSetWMProtocols(linuxDevice.x11Display, x11Window, &wmDeleteMessage, 1);
 
-		XMapRaised(x11Display, x11Window);
+		XMapRaised(linuxDevice.x11Display, x11Window);
 	}
 
 	void close()
 	{
-		XDestroyWindow(x11Display, x11Window);
+		XDestroyWindow(linuxDevice.x11Display, x11Window);
 	}
 
 	void setupBgfx()
 	{
-		bgfx::x11SetDisplayWindow(x11Display, x11Window);
+		bgfx::x11SetDisplayWindow(linuxDevice.x11Display, x11Window);
 	}
 
 	void show()
 	{
-		XMapRaised(x11Display, x11Window);
+		XMapRaised(linuxDevice.x11Display, x11Window);
 	}
 
 	void hide()
 	{
-		XUnmapWindow(x11Display, x11Window);
+		XUnmapWindow(linuxDevice.x11Display, x11Window);
 	}
 
 	void resize(uint16_t width, uint16_t height)
 	{
-		XResizeWindow(x11Display, x11Window, width, height);
+		XResizeWindow(linuxDevice.x11Display, x11Window, width, height);
 	}
 
 	void move(uint16_t x, uint16_t y)
 	{
-		XMoveWindow(x11Display, x11Window, x, y);
+		XMoveWindow(linuxDevice.x11Display, x11Window, x, y);
 	}
 
 	void minimize()
@@ -595,7 +615,7 @@ public:
 		static char buffer[512];
 		memset(buffer, 0, sizeof(buffer));
 		char* name;
-		XFetchName(x11Display, x11Window, &name);
+		XFetchName(linuxDevice.x11Display, x11Window, &name);
 		strncpy(buffer, name, sizeof(buffer));
 		XFree(name);
 		return buffer;
@@ -603,7 +623,7 @@ public:
 
 	void setTitle(const char* title)
 	{
-		XStoreName(x11Display, x11Window, title);
+		XStoreName(linuxDevice.x11Display, x11Window, title);
 	}
 
 	void* getHandle()
@@ -613,13 +633,24 @@ public:
 
 	void setShowCursor(bool show)
 	{
-		XDefineCursor(x11Display
+		XDefineCursor(linuxDevice.x11Display
 			, x11Window
 			, show ? None : x11HiddenCursor
 			);
 	}
 
-	::Display* x11Display = nullptr;
+	void setFullscreen(bool isFullscreen)
+	{
+		XEvent e;
+		e.xclient.type = ClientMessage;
+		e.xclient.window = _x11_window;
+		e.xclient.message_type = XInternAtom(linuxDevice._x11_display, "_NET_WM_STATE", False);
+		e.xclient.format = 32;
+		e.xclient.data.l[0] = isFullscreen ? 1 : 0;
+		e.xclient.data.l[1] = XInternAtom(linuxDevice._x11_display, "_NET_WM_STATE_FULLSCREEN", False);
+		XSendEvent(linuxDevice._x11_display, DefaultRootWindow(linuxDevice._x11_display), False, SubstructureNotifyMask, &e);
+	}
+
 	::Window x11Window = None;
 	Cursor x11HiddenCursor = None;
 	Atom wmDeleteMessage;
@@ -640,16 +671,10 @@ namespace WindowFn
 
 struct DisplayXRandr : public Display
 {
-	DisplayXRandr()
-	{
-		this->x11Display = linuxDevice.x11Display;
-		screenConfig = linuxDevice.screenConfig;
-	}
-
 	void getModes(Array<DisplayMode>& modes)
 	{
 		int modesCount = 0;
-		XRRScreenSize* sizes = XRRConfigSizes(screenConfig, &modesCount);
+		XRRScreenSize* sizes = XRRConfigSizes(linuxDevice.screenConfig, &modesCount);
 
 		if (!sizes)
 		{
@@ -669,36 +694,21 @@ struct DisplayXRandr : public Display
 	void setMode(uint32_t id)
 	{
 		int modesCount = 0;
-		XRRScreenSize* sizes = XRRConfigSizes(screenConfig, &modesCount);
+		XRRScreenSize* sizes = XRRConfigSizes(linuxDevice.screenConfig, &modesCount);
 
 		if (!sizes || (int)id >= modesCount)
 		{
 			return;
 		}
 
-		XRRSetScreenConfig(x11Display
-			, screenConfig
-			, RootWindow(x11Display, DefaultScreen(x11Display))
+		XRRSetScreenConfig(linuxDevice.x11Display
+			, linuxDevice.screenConfig
+			, RootWindow(linuxDevice.x11Display, DefaultScreen(linuxDevice.x11Display))
 			, (int)id
 			, RR_Rotate_0
 			, CurrentTime
 			);
 	}
-
-	// void setFullscreen(bool isFullscreen)
-	// {
-	// 	XEvent e;
-	// 	e.xclient.type = ClientMessage;
-	// 	e.xclient.window = x11Window;
-	// 	e.xclient.message_type = XInternAtom(x11Display, "_NET_WM_STATE", False );
-	// 	e.xclient.format = 32;
-	// 	e.xclient.data.l[0] = isFullscreen ? 1 : 0;
-	// 	e.xclient.data.l[1] = XInternAtom(x11Display, "_NET_WM_STATE_FULLSCREEN", False);
-	// 	XSendEvent(x11Display, DefaultRootWindow(x11Display), False, SubstructureNotifyMask, &e);
-	// }
-
-	::Display* x11Display = nullptr;
-	XRRScreenConfiguration* screenConfig = nullptr;
 };
 
 namespace DisplayFn
@@ -716,7 +726,7 @@ namespace DisplayFn
 
 bool getNextEvent(OsEvent& ev)
 {
-	return linuxDevice.osEventQueue.popEvent(ev);
+	return linuxDevice.deviceEventQueue.popEvent(ev);
 }
 
 } // namespace Rio
@@ -749,12 +759,11 @@ int main(int argumentListCount, char** argumentList)
 	RIO_UNUSED(initMemoryGlobals);
 
 	DeviceOptions deviceOptions(argumentListCount, (const char**)argumentList);
-	if (deviceOptions.parse() == EXIT_SUCCESS)
+	if (deviceOptions.parse() != EXIT_SUCCESS)
 	{
-		return linuxDevice.run(&deviceOptions);
+		return EXIT_FAILURE;
 	}
-
-	return EXIT_FAILURE;
+	return linuxDevice.run(&deviceOptions);
 }
 
 #endif // RIO_PLATFORM_LINUX

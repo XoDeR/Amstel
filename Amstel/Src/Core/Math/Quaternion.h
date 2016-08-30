@@ -170,7 +170,8 @@ inline Vector3 getForward(const Quaternion& q)
 	return m.z;
 }
 
-// Returns the linearly interpolated quaternion between *a* and *b* at time *t* in [0, 1]. It uses NLerp.
+// Returns the linearly interpolated quaternion between *a* and *b* at time *t* in [0, 1]
+// uses NLerp.
 inline Quaternion getLinearInterpolation(const Quaternion& a, const Quaternion& b, float t)
 {
 	const float t1 = 1.0f - t;

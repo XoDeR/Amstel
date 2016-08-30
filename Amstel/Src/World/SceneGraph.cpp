@@ -28,7 +28,7 @@ SceneGraph::Pose& SceneGraph::Pose::operator=(const Matrix4x4& m)
 }
 
 SceneGraph::SceneGraph(Allocator& a)
-	: marker(MARKER)
+	: marker(SCENE_GRAPH_MARKER)
 	, allocator(a)
 	, unitIdMap(a)
 {
@@ -50,13 +50,13 @@ void SceneGraph::allocate(uint32_t instancesCount)
 {
 	RIO_ASSERT(instancesCount > this->instanceData.size, "instancesCount > instanceData.size");
 
-	const uint32_t bytes = instancesCount * (0
-		+ sizeof(UnitId)
-		+ sizeof(Matrix4x4)
-		+ sizeof(Pose)
-		+ sizeof(TransformInstance) * 4
-		+ sizeof(bool)
-		);
+	const uint32_t bytes = 0
+		+ instancesCount * sizeof(UnitId) + alignof(UnitId)
+		+ instancesCount * sizeof(Matrix4x4) + alignof(Matrix4x4)
+		+ instancesCount * sizeof(Pose) + alignof(Pose)
+		+ instancesCount * sizeof(TransformInstance) * 4 + alignof(TransformInstance)
+		+ instancesCount * sizeof(bool) + alignof(bool)
+		;
 
 	InstanceData newInstanceData;
 	newInstanceData.size = this->instanceData.size;
@@ -64,13 +64,13 @@ void SceneGraph::allocate(uint32_t instancesCount)
 	newInstanceData.buffer = allocator.allocate(bytes);
 
 	newInstanceData.unit = (UnitId*)(newInstanceData.buffer);
-	newInstanceData.world = (Matrix4x4*)(newInstanceData.unit + instancesCount);
-	newInstanceData.local = (Pose*)(newInstanceData.world + instancesCount);
-	newInstanceData.parent = (TransformInstance*)(newInstanceData.local + instancesCount);
-	newInstanceData.firstChild = (TransformInstance*)(newInstanceData.parent + instancesCount);
-	newInstanceData.nextSibling = (TransformInstance*)(newInstanceData.firstChild + instancesCount);
-	newInstanceData.prevSibling = (TransformInstance*)(newInstanceData.nextSibling + instancesCount);
-	newInstanceData.changed = (bool*)(newInstanceData.prevSibling + instancesCount);
+	newInstanceData.world = (Matrix4x4*)MemoryFn::alignTop(newInstanceData.unit + instancesCount, alignof(Matrix4x4));
+	newInstanceData.local = (Pose*)MemoryFn::alignTop(newInstanceData.world + instancesCount, alignof(Pose));
+	newInstanceData.parent = (TransformInstance*)MemoryFn::alignTop(newInstanceData.local + instancesCount, alignof(TransformInstance));
+	newInstanceData.firstChild = (TransformInstance*)MemoryFn::alignTop(newInstanceData.parent + instancesCount, alignof(TransformInstance));
+	newInstanceData.nextSibling = (TransformInstance*)MemoryFn::alignTop(newInstanceData.firstChild + instancesCount, alignof(TransformInstance));
+	newInstanceData.prevSibling = (TransformInstance*)MemoryFn::alignTop(newInstanceData.nextSibling + instancesCount, alignof(TransformInstance));
+	newInstanceData.changed = (bool*)MemoryFn::alignTop(newInstanceData.prevSibling + instancesCount, alignof(bool));
 
 	memcpy(newInstanceData.unit, this->instanceData.unit, this->instanceData.size * sizeof(UnitId));
 	memcpy(newInstanceData.world, this->instanceData.world, this->instanceData.size * sizeof(Matrix4x4));

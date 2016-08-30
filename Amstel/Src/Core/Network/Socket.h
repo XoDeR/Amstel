@@ -33,6 +33,17 @@ struct ConnectResult
 	} error;
 };
 
+struct BindResult
+{
+	enum
+	{
+		NO_ERROR,
+		BAD_SOCKET,
+		ADDRESS_IN_USE,
+		UNKNOWN
+	} error;
+};
+
 struct ReadResult
 {
 	enum 
@@ -137,12 +148,12 @@ struct TcpSocket
 			cr.error = ConnectResult::UNKNOWN;
 		}
 #elif RIO_PLATFORM_WINDOWS
-		int wsaerr = WSAGetLastError();
-		if (wsaerr == WSAECONNREFUSED)
+		int wsaErr = WSAGetLastError();
+		if (wsaErr == WSAECONNREFUSED)
 		{
 			cr.error = ConnectResult::REFUSED;
 		}
-		else if (wsaerr == WSAETIMEDOUT)
+		else if (wsaErr == WSAETIMEDOUT)
 		{
 			cr.error = ConnectResult::TIMEOUT;
 		}
@@ -154,7 +165,7 @@ struct TcpSocket
 		return cr;
 	}
 
-	bool bind(uint16_t port)
+	BindResult bind(uint16_t port)
 	{
 		close();
 		open();
@@ -167,13 +178,39 @@ struct TcpSocket
 
 		int err = ::bind(socket, (const sockaddr*)&address, sizeof(sockaddr_in));
 
+		BindResult bindResult;
+		bindResult.error = BindResult::NO_ERROR;
+
+		if (err == 0)
+		{
+			return bindResult;
+		}
+
 #if RIO_PLATFORM_POSIX
-		RIO_ASSERT(err == 0, "bind: errno = %d", errno);
+		if (errno == EBADF)
+		{
+			bindResult.error = BindResult::BAD_SOCKET;
+		}
+		else if (errno == EADDRINUSE)
+		{
+			bindResult.error = BindResult::ADDRESS_IN_USE;
+		}
+		else
+		{
+			bindResult.error = BindResult::UNKNOWN;
+		}
 #elif RIO_PLATFORM_WINDOWS
-		RIO_ASSERT(err == 0, "bind: WSAGetLastError = %d", WSAGetLastError());
-#endif
-		RIO_UNUSED(err);
-		return true;
+		int wsaErr = WSAGetLastError();
+		if (wsaErr == WSAEADDRINUSE)
+		{
+			bindResult.error = BindResult::ADDRESS_IN_USE;
+		}
+		else
+		{
+			bindResult.error = BindResult::UNKNOWN;
+		}
+#endif // RIO_PLATFORM_
+		return bindResult;
 	}
 
 	void listen(uint32_t max)
@@ -187,7 +224,7 @@ struct TcpSocket
 		RIO_UNUSED(err);
 	}
 
-	AcceptResult acceptInternal(TcpSocket& c)
+	AcceptResult acceptInternal(TcpSocket& tcpSocket)
 	{
 		int err = ::accept(socket, NULL, NULL);
 
@@ -197,7 +234,7 @@ struct TcpSocket
 #if RIO_PLATFORM_POSIX
 		if (err >= 0)
 		{
-			c.socket = err;
+			tcpSocket.socket = err;
 		}
 		else if (err == -1 && errno == EBADF)
 		{
@@ -214,12 +251,12 @@ struct TcpSocket
 #elif RIO_PLATFORM_WINDOWS
 		if (err != INVALID_SOCKET)
 		{
-			c.socket = err;
+			tcpSocket.socket = err;
 			return acceptResult;
 		}
 
-		int wsaerr = WSAGetLastError();
-		if (wsaerr == WSAEWOULDBLOCK)
+		int wsaErr = WSAGetLastError();
+		if (wsaErr == WSAEWOULDBLOCK)
 		{
 			acceptResult.error = AcceptResult::NO_CONNECTION;
 		}
@@ -245,9 +282,9 @@ struct TcpSocket
 
 	ReadResult readInternal(void* data, uint32_t size)
 	{
-		ReadResult rr;
-		rr.error = ReadResult::NO_ERROR;
-		rr.bytesRead = 0;
+		ReadResult readResult;
+		readResult.error = ReadResult::NO_ERROR;
+		readResult.bytesRead = 0;
 
 		char* buffer = (char*)data;
 		uint32_t toRead = size;
@@ -259,42 +296,42 @@ struct TcpSocket
 
 			if (bytesRead == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
 			{
-				return rr;
+				return readResult;
 			}
 			else if (bytesRead == -1 && errno == ETIMEDOUT)
 			{
-				rr.error = ReadResult::TIMEOUT;
-				return rr;
+				readResult.error = ReadResult::TIMEOUT;
+				return readResult;
 			}
 			else if (bytesRead == 0)
 			{
-				rr.error = ReadResult::REMOTE_CLOSED;
-				return rr;
+				readResult.error = ReadResult::REMOTE_CLOSED;
+				return readResult;
 			}
 #elif RIO_PLATFORM_WINDOWS
 			int bytesRead = ::recv(socket, buffer, (int)toRead, 0);
 
 			if (bytesRead == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK)
 			{
-				return rr;
+				return readResult;
 			}
 			else if (bytesRead == SOCKET_ERROR && WSAGetLastError() == WSAETIMEDOUT)
 			{
-				rr.error = ReadResult::TIMEOUT;
-				return rr;
+				readResult.error = ReadResult::TIMEOUT;
+				return readResult;
 			}
 			else if (bytesRead == 0)
 			{
-				rr.error = ReadResult::REMOTE_CLOSED;
-				return rr;
+				readResult.error = ReadResult::REMOTE_CLOSED;
+				return readResult;
 			}
-#endif
+#endif // RIO_PLATFORM_
 			buffer += bytesRead;
 			toRead -= bytesRead;
-			rr.bytesRead += bytesRead;
+			readResult.bytesRead += bytesRead;
 		}
 
-		return rr;
+		return readResult;
 	}
 
 	ReadResult readNonblock(void* data, uint32_t size)
@@ -321,7 +358,7 @@ struct TcpSocket
 		while (toSend > 0)
 		{
 #if RIO_PLATFORM_POSIX
-			ssize_t bytesWritten = ::send(socket, (const char*)buffer, toSend, 0);
+			ssize_t bytesWritten = ::send(socket, buffer, toSend, 0);
 
 			if (bytesWritten == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
 			{
@@ -343,7 +380,7 @@ struct TcpSocket
 				return wr;
 			}
 #elif RIO_PLATFORM_WINDOWS
-			int bytesWritten = ::send(socket, (const char*)buffer, (int)toSend, 0);
+			int bytesWritten = ::send(socket, buffer, (int)toSend, 0);
 
 			if (bytesWritten == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK)
 			{
@@ -364,7 +401,7 @@ struct TcpSocket
 				wr.error = WriteResult::UNKNOWN;
 				return wr;
 			}
-#endif
+#endif // RIO_PLATFORM_
 			buffer += bytesWritten;
 			toSend -= bytesWritten;
 			wr.bytesWritten += bytesWritten;
@@ -392,7 +429,7 @@ struct TcpSocket
 #elif RIO_PLATFORM_WINDOWS
 		u_long nonBlocking = blocking ? 0 : 1;
 		ioctlsocket(socket, FIONBIO, &nonBlocking);
-#endif
+#endif // RIO_PLATFORM_
 	}
 
 	void setReuseAddress(bool reuse)

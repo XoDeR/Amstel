@@ -5,7 +5,7 @@
 #include "Resource/ResourcePackage.h"
 
 #include "World/DebugLine.h"
-#include "World/Gui.h"
+#include "World/DebugGui.h"
 #include "World/Level.h"
 #include "World/PhysicsWorld.h"
 #include "World/RenderWorld.h"
@@ -95,9 +95,17 @@ void ScriptStack::pushColor4(const Color4& color4)
 	pushQuaternion(quaternion);
 }
 
+inline void ScriptStack::checkType(int i, const DebugGui* debugGui)
+{
+	if (!getIsPointer(i) || *(uint32_t*)debugGui != DEBUG_GUI_MARKER)
+	{
+		luaL_typerror(scriptState, i, "DebugGui");
+	}
+}
+
 void ScriptStack::checkType(int i, const DebugLine* debugLine)
 {
-	if (!getIsPointer(i) || *(uint32_t*)debugLine != DebugLine::MARKER)
+	if (!getIsPointer(i) || *(uint32_t*)debugLine != DEBUG_LINE_MARKER)
 	{
 		luaL_typerror(scriptState, i, "DebugLine");
 	}
@@ -105,7 +113,7 @@ void ScriptStack::checkType(int i, const DebugLine* debugLine)
 
 void ScriptStack::checkType(int i, const ResourcePackage* resourcePackage)
 {
-	if (!getIsPointer(i) || *(uint32_t*)resourcePackage != ResourcePackage::MARKER)
+	if (!getIsPointer(i) || *(uint32_t*)resourcePackage != RESOURCE_PACKAGE_MARKER)
 	{
 		luaL_typerror(scriptState, i, "ResourcePackage");
 	}
@@ -113,7 +121,7 @@ void ScriptStack::checkType(int i, const ResourcePackage* resourcePackage)
 
 void ScriptStack::checkType(int i, const World* world)
 {
-	if (!getIsPointer(i) || *(uint32_t*)world != World::MARKER)
+	if (!getIsPointer(i) || *(uint32_t*)world != WORLD_MARKER)
 	{
 		luaL_typerror(scriptState, i, "World");
 	}
@@ -121,7 +129,7 @@ void ScriptStack::checkType(int i, const World* world)
 
 void ScriptStack::checkType(int i, const SceneGraph* sceneGraph)
 {
-	if (!getIsPointer(i) || *(uint32_t*)sceneGraph != SceneGraph::MARKER)
+	if (!getIsPointer(i) || *(uint32_t*)sceneGraph != SCENE_GRAPH_MARKER)
 	{
 		luaL_typerror(scriptState, i, "SceneGraph");
 	}
@@ -129,7 +137,7 @@ void ScriptStack::checkType(int i, const SceneGraph* sceneGraph)
 
 void ScriptStack::checkType(int i, const RenderWorld* renderWorld)
 {
-	if (!getIsPointer(i) || *(uint32_t*)renderWorld != RenderWorld::MARKER)
+	if (!getIsPointer(i) || *(uint32_t*)renderWorld != RENDER_WORLD_MARKER)
 	{
 		luaL_typerror(scriptState, i, "RenderWorld");
 	}
@@ -137,7 +145,7 @@ void ScriptStack::checkType(int i, const RenderWorld* renderWorld)
 
 void ScriptStack::checkType(int i, const Level* level)
 {
-	if (!getIsPointer(i) || *(uint32_t*)level != Level::MARKER)
+	if (!getIsPointer(i) || *(uint32_t*)level != LEVEL_MARKER)
 	{
 		luaL_typerror(scriptState, i, "Level");
 	}

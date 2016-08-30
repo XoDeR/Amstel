@@ -333,13 +333,13 @@ namespace JsonRFn
 			DynamicString key(ta);
 			json = parseKey(json, key);
 
-			FixedString fs_key(keyBegin, key.getLength());
+			FixedString fixedStringKey(keyBegin, key.getLength());
 
 			json = skipSpaces(json);
 			json = getNext(json, (*json == '=') ? '=' : ':');
 			json = skipSpaces(json);
 
-			MapFn::set(object, fs_key, json);
+			MapFn::set(object.map, fixedStringKey, json);
 
 			json = skipValue(json);
 			json = skipSpaces(json);
@@ -367,13 +367,13 @@ namespace JsonRFn
 				DynamicString key(ta);
 				json = parseKey(json, key);
 
-				FixedString fs_key(keyBegin, key.getLength());
+				FixedString fixedStringKey(keyBegin, key.getLength());
 
 				json = skipSpaces(json);
 				json = getNext(json, (*json == '=') ? '=' : ':');
 				json = skipSpaces(json);
 
-				MapFn::set(object, fs_key, json);
+				MapFn::set(object.map, fixedStringKey, json);
 
 				json = skipValue(json);
 				json = skipSpaces(json);

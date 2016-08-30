@@ -12,7 +12,7 @@
 namespace Rio
 {
 
-namespace PhysicsResourceFn
+namespace PhysicsResourceInternalFn
 {
 	inline void compile(const char* /*path*/, CompileOptions& /*compileOptions*/) {}
 	inline void* load(File& /*file*/, Allocator& /*a*/) { return nullptr; }
@@ -21,7 +21,7 @@ namespace PhysicsResourceFn
 	Buffer compileCollider(const char* json, CompileOptions& compileOptions);
 	Buffer compileActor(const char* json, CompileOptions& compileOptions);
 	Buffer compileJoint(const char* json, CompileOptions& compileOptions);
-} // namespace PhysicsResourceFn
+} // namespace PhysicsResourceInternalFn
 
 struct PhysicsConfigResource
 {
@@ -73,12 +73,15 @@ struct PhysicsConfigActor
 	uint32_t flags;
 };
 
-namespace PhysicsConfigResourceFn
+namespace PhysicsConfigResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions);
 	void* load(File& file, Allocator& a);
 	void unload(Allocator& allocator, void* resource);
+} // namespace PhysicsConfigResourceInternalFn
 
+namespace PhysicsConfigResourceFn
+{
 	const PhysicsConfigMaterial* getPhysicsConfigMaterial(const PhysicsConfigResource* physicsConfigResource, StringId32 name);
 	const PhysicsConfigShape* getPhysicsConfigShape(const PhysicsConfigResource* physicsConfigResource, StringId32 name);
 	const PhysicsConfigActor* getPhysicsConfigActor(const PhysicsConfigResource* physicsConfigResource, StringId32 name);

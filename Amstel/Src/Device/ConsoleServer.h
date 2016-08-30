@@ -12,13 +12,7 @@ namespace Rio
 class ConsoleServer
 {
 private:
-	using CommandFunction = void (*)(void* data, ConsoleServer& cs, TcpSocket client, const char* json);
-
-	struct CommandData
-	{
-		CommandFunction commandFunction = nullptr;
-		void* data = nullptr;
-	};
+	using CommandFunction = void (*)(ConsoleServer& consoleServer, TcpSocket client, const char* json);
 public:
 	ConsoleServer(Allocator& a);
 	// If <wait> is true, this function blocks until a client is connected
@@ -35,7 +29,7 @@ public:
 	// Sends the success message to <client>
 	void success(TcpSocket client, const char* msg);
 	// Registers the command <type>
-	void registerCommand(StringId32 type, CommandFunction commandFunction, void* data);
+	void registerCommand(const char* type, CommandFunction commandFunction);
 private:
 	void addClient(TcpSocket socket);
 	ReadResult updateClient(TcpSocket client);
@@ -43,7 +37,7 @@ private:
 
 	TcpSocket server;
 	Vector<TcpSocket> clientList;
-	SortMap<StringId32, CommandData> commandDataList;
+	SortMap<StringId32, CommandFunction> commandFunctionMap;
 };
 
 } // namespace Rio

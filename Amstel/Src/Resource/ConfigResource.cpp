@@ -1,7 +1,7 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Resource/ConfigResource.h"
 #include "Core/Memory/Allocator.h"
-#include "Core/Containers/Map.h"
+#include "Core/Json/JsonObject.h"
 #include "Core/Json/JsonR.h"
 #include "Resource/ResourceTypes.h"
 #include "Resource/CompileOptions.h"
@@ -9,7 +9,7 @@
 namespace Rio
 {
 
-namespace ConfigResourceFn
+namespace ConfigResourceInternalFn
 {
 	void compile(const char* path, CompileOptions& compileOptions)
 	{
@@ -19,8 +19,8 @@ namespace ConfigResourceFn
 		JsonObject boot(ta);
 		JsonRFn::parse(buffer, boot);
 
-		const char* bootScriptJson  = MapFn::get(boot, FixedString("bootScript"), (const char*)nullptr);
-		const char* bootPackageJson = MapFn::get(boot, FixedString("bootPackage"), (const char*)nullptr);
+		const char* bootScriptJson = boot["bootScript"];
+		const char* bootPackageJson = boot["bootPackage"];
 		RESOURCE_COMPILER_ASSERT(bootScriptJson != nullptr, compileOptions, "'bootScript' must be specified.");
 		RESOURCE_COMPILER_ASSERT(bootPackageJson != nullptr, compileOptions, "'bootPackage' must be specified.");
 
@@ -47,7 +47,7 @@ namespace ConfigResourceFn
 	{
 		a.deallocate(resource);
 	}
-} // namespace ConfigResourceFn
+} // namespace ConfigResourceInternalFn
 
 } // namespace Rio
 // Copyright (c) 2016 Volodymyr Syvochka

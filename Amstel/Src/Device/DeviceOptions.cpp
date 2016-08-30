@@ -11,11 +11,6 @@ namespace Rio
 
 static void help(const char* message = nullptr)
 {
-	if (message != nullptr)
-	{
-		RIO_LOGE("Error: %s\n", message);
-	}
-
 	RIO_LOGI(
 		"Amstel Game Engine\n"
 		"\n"
@@ -26,9 +21,9 @@ static void help(const char* message = nullptr)
 		"Options:\n"
 		"  -h --help                  Display this help.\n"
 		"  -v --version               Display engine version.\n"
-		"  --sourceDirectory <path>        Use <path> as the source directory for resource compilation.\n"
-		"  --bundleDirectory <path>        Use <path> as the destination directory for compiled resources.\n"
-		"  --bootDirectory <path>          Boot the engine with the 'boot.config' from given <path>.\n"
+		"  --sourceDirectory <path>   Use <path> as the source directory for resource compilation.\n"
+		"  --dataDirectory <path>     Use <path> as the destination directory for compiled resources.\n"
+		"  --bootDirectory <path>     Boot the engine with the 'boot.config' from given <path>.\n"
 		"  --compile                  Do a full compile of the resources.\n"
 		"  --platform <platform>      Compile resources for the given <platform>.\n"
 		"      linux\n"
@@ -37,11 +32,16 @@ static void help(const char* message = nullptr)
 		"      ios\n"
 		"      osx\n"
 		"  --continue                 Run the engine after resource compilation.\n"
-		"  --consolePort <port>      Set port of the console.\n"
-		"  --waitForConsole             Wait for a console connection before starting up.\n"
-		"  --parentWindow <handle>   Set the parent window <handle> of the main window.\n"
+		"  --consolePort <port>       Set port of the console.\n"
+		"  --waitForConsole           Wait for a console connection before starting up.\n"
+		"  --parentWindow <handle>    Set the parent window <handle> of the main window.\n"
 		"  --server                   Run the engine in server mode.\n"
 	);
+
+	if (message != nullptr)
+	{
+		RIO_LOGE("Error: %s\n", message);
+	}
 }
 
 DeviceOptions::DeviceOptions(int commandLineArgumentListCount, const char** commandLineArgumentList)
@@ -66,13 +66,24 @@ int DeviceOptions::parse()
 		return EXIT_FAILURE;
 	}
 
-	sourceDirectory = commandLine.getParameter("sourceDirectory");
-	bundleDirectory = commandLine.getParameter("bundleDirectory");
+	sourceDirectory = commandLine.getParameter(0, "sourceDirectory");
+	dataDirectory = commandLine.getParameter(0, "dataDirectory");
+
+	mappedSourceDirectoryName = commandLine.getParameter(0, "mappedSourceDirectory");
+	if (mappedSourceDirectoryName != nullptr)
+	{
+		mappedSourceDirectoryPrefix = commandLine.getParameter(1, "mappedSourceDirectory");
+		if (mappedSourceDirectoryPrefix == nullptr)
+		{
+			help("Mapped source directory must be specified.");
+			return EXIT_FAILURE;
+		}
+	}
 
 	needToCompile = commandLine.hasArgument("compile");
 	if (needToCompile == true)
 	{
-		platformName = commandLine.getParameter("platform");
+		platformName = commandLine.getParameter(0, "platform");
 		if (platformName == nullptr)
 		{
 			help("Platform must be specified.");
@@ -94,9 +105,9 @@ int DeviceOptions::parse()
 			return EXIT_FAILURE;
 		}
 
-		if (bundleDirectory == nullptr)
+		if (dataDirectory == nullptr)
 		{
-			help("Bundle directory must be specified.");
+			help("Data directory must be specified.");
 			return EXIT_FAILURE;
 		}
 	}
@@ -111,11 +122,11 @@ int DeviceOptions::parse()
 		}
 	}
 
-	if (bundleDirectory != nullptr)
+	if (dataDirectory != nullptr)
 	{
-		if (!PathFn::getIsAbsolute(bundleDirectory))
+		if (!PathFn::getIsAbsolute(dataDirectory))
 		{
-			help("Bundle directory must be absolute.");
+			help("Data directory must be absolute.");
 			return EXIT_FAILURE;
 		}
 	}
@@ -129,9 +140,18 @@ int DeviceOptions::parse()
 		}
 	}
 
+	if (mappedSourceDirectoryPrefix != nullptr)
+	{
+		if (!PathFn::getIsAbsolute(mappedSourceDirectoryPrefix))
+		{
+			help("Mapped source dir must be absolute.");
+			return EXIT_FAILURE;
+		}
+	}
+
 	doContinue = commandLine.hasArgument("continue");
 
-	bootDirectory = commandLine.getParameter("bootDirectory");
+	bootDirectory = commandLine.getParameter(0, "bootDirectory");
 	if (bootDirectory != nullptr)
 	{
 		if (!PathFn::getIsRelative(bootDirectory))
@@ -143,7 +163,7 @@ int DeviceOptions::parse()
 
 	needToWaitForConsole = commandLine.hasArgument("waitForConsole");
 
-	const char* parent = commandLine.getParameter("parentWindow");
+	const char* parent = commandLine.getParameter(0, "parentWindow");
 	if (parent != nullptr)
 	{
 		if (sscanf(parent, "%u", &parentWindow) != 1)
@@ -153,7 +173,7 @@ int DeviceOptions::parse()
 		}
 	}
 
-	const char* port = commandLine.getParameter("consolePort");
+	const char* port = commandLine.getParameter(0, "consolePort");
 	if (port != nullptr)
 	{
 		if (sscanf(port, "%hu", &consolePort) != 1)

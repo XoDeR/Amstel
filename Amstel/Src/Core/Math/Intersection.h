@@ -8,7 +8,7 @@ namespace Rio
 
 // Returns the distance along ray (from, direction) to intersection point with plane <p>
 // or -1.0 if no intersection
-float getRayPlaneIntersection(const Vector3& from, const Vector3& direction, const Plane& p);
+float getRayPlaneIntersection(const Vector3& from, const Vector3& direction, const Plane3& p);
 
 // Returns the distance along ray (from, direction) to intersection point with disc defined by
 // <center>, <radius> and <normal> or -1.0 if no intersection
@@ -31,7 +31,7 @@ float getRayTriangleIntersection(const Vector3& from, const Vector3& direction, 
 float getRayMeshIntersection(const Vector3& from, const Vector3& direction, const Matrix4x4& transformMatrix, const void* vertices, uint32_t stride, const uint16_t* indices, uint32_t num);
 
 // Returns whether the planes <a>, <b> and <c> intersects and if so fills <ip> with the intersection point
-bool getThreePlanesIntersection(const Plane& a, const Plane& b, const Plane& c, Vector3& ip);
+bool getThreePlanesIntersection(const Plane3& a, const Plane3& b, const Plane3& c, Vector3& ip);
 
 // Returns whether the frustum <f> and the sphere <s> intersects
 bool getFrustumSphereIntersection(const Frustum& f, const Sphere& s);

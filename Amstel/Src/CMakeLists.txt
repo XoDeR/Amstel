@@ -59,8 +59,8 @@ fips_begin_app(Amstel cmdline)
 #endif()
 	fips_dir(Core/FileSystem GROUP "Core/FileSystem")
 	fips_files(
-		DiskFileSystem.cpp
-		DiskFileSystem.h
+		FileSystemDisk.cpp
+		FileSystemDisk.h
 		File.h
 		FileSystem.h
 		FileSystemTypes.h
@@ -72,8 +72,8 @@ fips_begin_app(Amstel cmdline)
 #if (FIPS_ANDROID)
     fips_dir(Core/FileSystem/Android GROUP "Core/FileSystem/Android")
 	fips_files(
-		ApkFileSystem_Android.cpp
-		ApkFileSystem_Android.h
+		FileSystemApk_Android.cpp
+		FileSystemApk_Android.h
 	)
 #endif()	
 	fips_dir(Core/Json GROUP "Core/Json")
@@ -82,6 +82,7 @@ fips_begin_app(Amstel cmdline)
 		Json.h
 		JsonR.cpp
 		JsonR.h
+		JsonObject.h
 		JsonTypes.h
 	)
 	fips_dir(Core/Math GROUP "Core/Math")
@@ -96,7 +97,7 @@ fips_begin_app(Amstel cmdline)
 		MathUtils.h
 		Matrix3x3.h
 		Matrix4x4.h
-		Plane.h
+		Plane3.h
 		Quaternion.cpp
 		Quaternion.h
 		Random.h
@@ -153,6 +154,10 @@ fips_begin_app(Amstel cmdline)
 	)
 	fips_dir(Device)
 	fips_files(
+		BootConfig.cpp
+		BootConfig.h
+		ConsoleApi.cpp
+		ConsoleApi.h
 		ConsoleServer.cpp
 		ConsoleServer.h
 		Device.cpp
@@ -167,7 +172,7 @@ fips_begin_app(Amstel cmdline)
 		InputTypes.h
 		Log.cpp
 		Log.h
-		OsEventQueue.h
+		DeviceEventQueue.h
 		Profiler.cpp
 		Profiler.h
 		Window.h
@@ -193,8 +198,8 @@ fips_begin_app(Amstel cmdline)
 #endif()
 	fips_dir(Resource)
 	fips_files(
-		BundleCompiler.cpp
-		BundleCompiler.h
+		DataCompiler.cpp
+		DataCompiler.h
 		CompileOptions.h
 		CompilerTypes.h
 		ConfigResource.cpp
@@ -247,8 +252,8 @@ fips_begin_app(Amstel cmdline)
 		Audio.h
 		DebugLine.cpp
 		DebugLine.h
-		Gui.cpp
-		Gui.h
+		DebugGui.cpp
+		DebugGui.h
 		Level.cpp
 		Level.h
 		Material.cpp
