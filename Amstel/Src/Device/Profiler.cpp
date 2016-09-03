@@ -1,5 +1,6 @@
 // Copyright (c) 2016 Volodymyr Syvochka
 #include "Device/Profiler.h"
+
 #include "Core/Base/Os.h"
 #include "Core/Containers/Array.h"
 #include "Core/Thread/Mutex.h"
@@ -34,33 +35,33 @@ namespace ProfilerGlobalFn
 namespace ProfilerFn
 {
 	enum { THREAD_BUFFER_SIZE = 4 * 1024 };
-	static char _thread_buffer[THREAD_BUFFER_SIZE];
-	static uint32_t _thread_buffer_size = 0;
-	static Mutex _buffer_mutex;
+	static char threadBuffer[THREAD_BUFFER_SIZE];
+	static uint32_t threadBufferSize = 0;
+	static Mutex bufferMutex;
 
-	static void flush_local_buffer()
+	static void flushLocalBuffer()
 	{
-		ScopedMutex scopedMutex(_buffer_mutex);
-		ArrayFn::push(*ProfilerGlobalFn::buffer, _thread_buffer, _thread_buffer_size);
-		_thread_buffer_size = 0;
+		ScopedMutex scopedMutex(bufferMutex);
+		ArrayFn::push(*ProfilerGlobalFn::buffer, threadBuffer, threadBufferSize);
+		threadBufferSize = 0;
 	}
 
 	template <typename T>
 	static void push(ProfilerEventType::Enum type, const T& ev)
 	{
-		if (_thread_buffer_size + 2 * sizeof(uint32_t) + sizeof(ev) >= THREAD_BUFFER_SIZE)
+		if (threadBufferSize + 2 * sizeof(uint32_t) + sizeof(ev) >= THREAD_BUFFER_SIZE)
 		{
-			flush_local_buffer();
+			flushLocalBuffer();
 		}
 
-		char* p = _thread_buffer + _thread_buffer_size;
+		char* p = threadBuffer + threadBufferSize;
 		*(uint32_t*)p = type;
 		p += sizeof(uint32_t);
 		*(uint32_t*)p = sizeof(ev);
 		p += sizeof(uint32_t);
 		*(T*)p = ev;
 
-		_thread_buffer_size += 2*sizeof(uint32_t) + sizeof(ev);
+		threadBufferSize += 2 * sizeof(uint32_t) + sizeof(ev);
 	}
 
 	void enterProfileScope(const char* name)
@@ -121,7 +122,7 @@ namespace ProfilerGlobalFn
 {
 	void flush()
 	{
-		ProfilerFn::flush_local_buffer();
+		ProfilerFn::flushLocalBuffer();
 		uint32_t end = ProfilerEventType::COUNT;
 		ArrayFn::push(*buffer, (const char*)&end, (uint32_t)sizeof(end));
 	}
